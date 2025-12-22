@@ -57,13 +57,11 @@ async function testX402ManualFlow() {
 
   const signedHex = tx.serialize();
   console.log("Signed tx (hex preview):", signedHex.slice(0, 50) + "...");
-  const b64SignedTx = Buffer.from(signedHex, "hex").toString("base64");
-  console.log("Signed tx (base64 preview):", b64SignedTx.slice(0, 50) + "...");
 
   console.log("3. Retry with X-PAYMENT...");
   const retryRes = await fetch(`${X402_WORKER_URL}${X402_ENDPOINT}`, {
     headers: {
-      "X-PAYMENT": b64SignedTx,
+      "X-PAYMENT": signedHex,
       "X-PAYMENT-TOKEN-TYPE": "STX",
     },
   });
