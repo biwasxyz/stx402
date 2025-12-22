@@ -19,14 +19,18 @@ openapi.get("/api/health", Health);
 const paymentConfig = {
   amountStx: c.env.X402_PAYMENT_AMOUNT_STX,
   address: c.env.X402_SERVER_ADDRESS,
-  network: c.env.X402_NETWORK as 'mainnet' | 'testnet',
+  network: c.env.X402_NETWORK as "mainnet" | "testnet",
   facilitatorUrl: c.env.X402_FACILITATOR_URL,
 };
 
 const paymentMiddleware = x402PaymentMiddleware(paymentConfig);
 
 openapi.get("/api/get-bns-name/:address", paymentMiddleware, GetBnsName);
-openapi.get("/api/validate-stacks-address/:address", paymentMiddleware, ValidateStacksAddress);
+openapi.get(
+  "/api/validate-stacks-address/:address",
+  paymentMiddleware,
+  ValidateStacksAddress
+);
 
 // You may also register routes for non OpenAPI directly on Hono
 // app.get('/test', (c) => c.text('Hono!'))

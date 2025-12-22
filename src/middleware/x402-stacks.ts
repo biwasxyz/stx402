@@ -1,14 +1,14 @@
-import type { Context } from 'hono';
-import { X402PaymentVerifier, STXtoMicroSTX } from 'x402-stacks';
+import type { Context } from "hono";
+import { X402PaymentVerifier, STXtoMicroSTX } from "x402-stacks";
 
 export interface X402PaymentRequired {
   maxAmountRequired: string;
   resource: string;
   payTo: string;
-  network: 'mainnet' | 'testnet';
+  network: "mainnet" | "testnet";
   nonce: string;
   expiresAt: string;
-  tokenType?: 'STX' | 'sBTC';
+  tokenType?: "STX" | "sBTC";
 }
 
 export interface SettlePaymentResult {
@@ -21,13 +21,20 @@ export interface SettlePaymentResult {
 export const x402PaymentMiddleware = (config: {
   amountStx: string;
   address: string;
-  network: 'mainnet' | 'testnet';
+  network: "mainnet" | "testnet";
   facilitatorUrl: string;
 }) => {
-  return async (c: Context<{ Bindings: Env }>, next: () => Promise<Response>) => {
-    const verifier = new X402PaymentVerifier(config.facilitatorUrl, config.network);
-    const signedTx = c.req.header('X-PAYMENT');
-    const tokenType = (c.req.header('X-PAYMENT-TOKEN-TYPE') as 'STX' | 'sBTC') || 'STX';
+  return async (
+    c: Context<{ Bindings: Env }>,
+    next: () => Promise<Response>
+  ) => {
+    const verifier = new X402PaymentVerifier(
+      config.facilitatorUrl,
+      config.network
+    );
+    const signedTx = c.req.header("X-PAYMENT");
+    const tokenType =
+      (c.req.header("X-PAYMENT-TOKEN-TYPE") as "STX" | "sBTC") || "STX";
 
     if (!signedTx) {
       // Respond 402 with payment request
@@ -45,18 +52,18 @@ export const x402PaymentMiddleware = (config: {
     }
 
     // Verify/settle payment
-    const settleResult = await verifier.settlePayment(signedTx, {
+    const settleResult = (await verifier.settlePayment(signedTx, {
       expectedRecipient: config.address,
       minAmount: STXtoMicroSTX(config.amountStx),
       tokenType,
-    }) as SettlePaymentResult;
+    })) as SettlePaymentResult;
 
     if (!settleResult.isValid) {
-      return c.json({ error: 'Payment invalid or unconfirmed' }, 402);
+      return c.json({ error: "Payment invalid or unconfirmed" }, 402);
     }
 
     // Add X-PAYMENT-RESPONSE header
-    c.header('X-PAYMENT-RESPONSE', JSON.stringify(settleResult));
+    c.header("X-PAYMENT-RESPONSE", JSON.stringify(settleResult));
 
     return next();
   };
