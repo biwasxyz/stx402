@@ -1,11 +1,14 @@
-import {
-  makeSTXTokenTransfer,
-} from "@stacks/transactions";
+import { STACKS_MAINNET, STACKS_TESTNET } from "@stacks/network";
+import { makeSTXTokenTransfer } from "@stacks/transactions";
+import { deriveChildAccount } from "../src/utils/wallet";
 
-const WORKER_URL = "https://stx402.chaos.workers.dev";
-const PRIVATE_KEY = process.env.X402_CLIENT_PK!; // Set via ENV for testnet wallet
-const TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Has BNS: stacks.btc
-const ENDPOINT = `/api/get-bns-name/${TEST_ADDRESS}`;
+
+const X402_WORKER_URL = "https://stx402.chaos.workers.dev";
+const X402_CLIENT_PK = process.env.X402_CLIENT_PK;
+const X402_TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Has BNS: stacks.btc
+const X402_ENDPOINT = `/api/get-bns-name/${X402_TEST_ADDRESS}`;
+const X402_NETWORK = process.env.X402_NETWORK || "testnet";
+
 
 interface X402PaymentRequired {
   maxAmountRequired: string;
@@ -18,16 +21,20 @@ interface X402PaymentRequired {
 }
 
 async function testX402ManualFlow() {
-  if (!PRIVATE_KEY_HEX) {
-    throw new Error("Set X402_CLIENT_PK env var with testnet private key hex");
+  if (!X402_CLIENT_PK) {
+    throw new Error("Set X402_CLIENT_PK env var with testnet private key mnemonic");
   }
 
-  const network = new StacksTestnet();
-  const privKey = createStacksPrivateKey(PRIVATE_KEY_HEX);
-  console.log("Sender:", privKey.publicKey.toString(network));
+  const { address, key } = await deriveChildAccount(
+    X402_NETWORK,
+    X402_CLIENT_PK,
+    0
+  );
+
+  console.log("Using test address:", address);
 
   console.log("1. Initial request (expect 402)...");
-  const initialRes = await fetch(`${WORKER_URL}${ENDPOINT}`);
+  const initialRes = await fetch(`${X402_WORKER_URL}${X402_ENDPOINT}`);
   if (initialRes.status !== 402) {
     throw new Error(`Expected 402, got ${initialRes.status}: ${await initialRes.text()}`);
   }
@@ -37,21 +44,24 @@ async function testX402ManualFlow() {
 
   if (paymentReq.tokenType !== "STX") throw new Error("Test assumes STX");
 
+  const network = X402_NETWORK === "mainnet" ? STACKS_MAINNET : STACKS_TESTNET;
+
   console.log("2. Signing STX transfer...");
   const tx = await makeSTXTokenTransfer({
     recipient: paymentReq.payTo,
     amount: BigInt(paymentReq.maxAmountRequired), // microSTX
-    senderKey: PRIVATE_KEY_HEX,
+    senderKey: key,
     network,
     memo: `x402 ${paymentReq.nonce.slice(0, 8)}`, // Traceable memo
   });
 
-  const signedHex = tx.serialize().toString("hex");
-  const b64SignedTx = base64FromBytes(new Uint8Array(Buffer.from(signedHex, "hex")));
+  const signedHex = tx.serialize();
+  console.log("Signed tx (hex preview):", signedHex.slice(0, 50) + "...");
+  const b64SignedTx = Buffer.from(signedHex, "hex").toString("base64");
   console.log("Signed tx (base64 preview):", b64SignedTx.slice(0, 50) + "...");
 
   console.log("3. Retry with X-PAYMENT...");
-  const retryRes = await fetch(`${WORKER_URL}${ENDPOINT}`, {
+  const retryRes = await fetch(`${X402_WORKER_URL}${X402_ENDPOINT}`, {
     headers: {
       "X-PAYMENT": b64SignedTx,
       "X-PAYMENT-TOKEN-TYPE": "STX",
