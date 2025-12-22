@@ -5,7 +5,7 @@ import { type AppContext } from "../types";
 export class Health extends OpenAPIRoute {
   schema = {
     tags: ["Health"],
-    summary: "Check the stx402 service health",
+    summary: "Check the STX402 service health",
     request: {},
     responses: {
       "200": {
