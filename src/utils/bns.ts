@@ -7,7 +7,6 @@ import {
   TupleCV,
 } from "@stacks/transactions";
 import { getFetchOptions, setFetchOptions } from "@stacks/common";
-import { bufferToString } from "hono/utils/buffer";
 
 const BNS_CONTRACT_ADDRESS = "SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF";
 const BNS_CONTRACT_NAME = "BNS-V2";
