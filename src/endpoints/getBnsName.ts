@@ -1,5 +1,4 @@
 import { OpenAPIRoute } from "chanfana";
-import z from "zod";
 import { validateStacksAddress } from "@stacks/transactions";
 import { getNameFromAddress } from "../utils/bns";
 import type { AppContext } from "../types";
@@ -19,7 +18,7 @@ export class GetBnsName extends OpenAPIRoute {
     responses: {
       "200": {
         description: "BNS name",
-        content: { "text/plain": { schema: z.string().example("blockstack.btc") } },
+        content: { "text/plain": { schema: { type: "string", example: "blockstack.btc" } } },
       },
       "400": { description: "Invalid address" },
       "404": { description: "No name found" },
