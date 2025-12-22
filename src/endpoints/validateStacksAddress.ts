@@ -9,9 +9,9 @@ export class ValidateStacksAddress extends OpenAPIRoute {
     parameters: [
       {
         name: "address",
-        in: "path" as const,
+        in: "path",
         required: true,
-        schema: { type: "string" as const, example: "SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF" } as const,
+        schema: { type: "string", example: "SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF" },
       },
     ],
     responses: {
@@ -20,11 +20,11 @@ export class ValidateStacksAddress extends OpenAPIRoute {
         content: {
           "application/json": {
             schema: {
-              type: "object" as const,
+              type: "object",
               properties: {
-                valid: { type: "boolean" as const, const: true as const },
-              } as const,
-            } as const,
+                valid: { type: "boolean", const: true },
+              },
+            },
           },
         },
       },
@@ -33,12 +33,12 @@ export class ValidateStacksAddress extends OpenAPIRoute {
         content: {
           "application/json": {
             schema: {
-              type: "object" as const,
+              type: "object",
               properties: {
-                valid: { type: "boolean" as const, const: false as const },
-                error: { type: "string" as const },
-              } as const,
-            } as const,
+                valid: { type: "boolean", const: false },
+                error: { type: "string" },
+              },
+            },
           },
         },
       },
@@ -47,18 +47,18 @@ export class ValidateStacksAddress extends OpenAPIRoute {
         content: {
           "application/json": {
             schema: {
-              type: "object" as const,
+              type: "object",
               properties: {
-                maxAmountRequired: { type: "string" as const },
-                resource: { type: "string" as const },
-                payTo: { type: "string" as const },
-                network: { type: "string" as const, enum: ["mainnet", "testnet"] },
-                nonce: { type: "string" as const },
-                expiresAt: { type: "string" as const },
-                tokenType: { type: "string" as const, enum: ["STX", "sBTC"] },
-              } as const,
-              required: ["maxAmountRequired", "resource", "payTo", "network", "nonce", "expiresAt"] as const,
-            } as const,
+                maxAmountRequired: { type: "string" },
+                resource: { type: "string" },
+                payTo: { type: "string" },
+                network: { type: "string", enum: ["mainnet", "testnet"] },
+                nonce: { type: "string" },
+                expiresAt: { type: "string" },
+                tokenType: { type: "string", enum: ["STX", "sBTC"] },
+              },
+              required: ["maxAmountRequired", "resource", "payTo", "network", "nonce", "expiresAt"],
+            },
           },
         },
       },

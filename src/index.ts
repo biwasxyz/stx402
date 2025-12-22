@@ -16,14 +16,7 @@ const openapi = fromHono(app, {
 // Register OpenAPI endpoints
 openapi.get("/api/health", Health);
 
-const paymentConfig = {
-  amountStx: c.env.X402_PAYMENT_AMOUNT_STX,
-  address: c.env.X402_SERVER_ADDRESS,
-  network: c.env.X402_NETWORK as "mainnet" | "testnet",
-  facilitatorUrl: c.env.X402_FACILITATOR_URL,
-};
-
-const paymentMiddleware = x402PaymentMiddleware(paymentConfig);
+const paymentMiddleware = x402PaymentMiddleware();
 
 openapi.get("/api/get-bns-name/:address", paymentMiddleware, GetBnsName);
 openapi.get(

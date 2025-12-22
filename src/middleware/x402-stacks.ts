@@ -18,16 +18,18 @@ export interface SettlePaymentResult {
   blockHeight?: number;
 }
 
-export const x402PaymentMiddleware = (config: {
-  amountStx: string;
-  address: string;
-  network: "mainnet" | "testnet";
-  facilitatorUrl: string;
-}) => {
+export const x402PaymentMiddleware = () => {
   return async (
     c: Context<{ Bindings: Env }>,
     next: () => Promise<Response>
   ) => {
+    const config = {
+      amountStx: c.env.X402_PAYMENT_AMOUNT_STX,
+      address: c.env.X402_SERVER_ADDRESS,
+      network: c.env.X402_NETWORK as "mainnet" | "testnet",
+      facilitatorUrl: c.env.X402_FACILITATOR_URL,
+    };
+
     const verifier = new X402PaymentVerifier(
       config.facilitatorUrl,
       config.network
