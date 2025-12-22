@@ -1,12 +1,9 @@
 import {
   makeSTXTokenTransfer,
-  createStacksPrivateKey,
-  StacksTestnet,
 } from "@stacks/transactions";
-import { base64FromBytes } from "@stacks/encoding";
 
 const WORKER_URL = "https://stx402.chaos.workers.dev";
-const PRIVATE_KEY_HEX = process.env.X402_CLIENT_PK!; // Set via ENV for testnet wallet
+const PRIVATE_KEY = process.env.X402_CLIENT_PK!; // Set via ENV for testnet wallet
 const TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Has BNS: stacks.btc
 const ENDPOINT = `/api/get-bns-name/${TEST_ADDRESS}`;
 
