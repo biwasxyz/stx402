@@ -42,6 +42,26 @@ export class ValidateStacksAddress extends OpenAPIRoute {
           },
         },
       },
+      "402": {
+        description: "Payment required",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object" as const,
+              properties: {
+                maxAmountRequired: { type: "string" as const },
+                resource: { type: "string" as const },
+                payTo: { type: "string" as const },
+                network: { type: "string" as const, enum: ["mainnet", "testnet"] },
+                nonce: { type: "string" as const },
+                expiresAt: { type: "string" as const },
+                tokenType: { type: "string" as const, enum: ["STX", "sBTC"] },
+              } as const,
+              required: ["maxAmountRequired", "resource", "payTo", "network", "nonce", "expiresAt"] as const,
+            } as const,
+          },
+        },
+      },
     },
   };
 
