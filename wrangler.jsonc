@@ -28,7 +28,11 @@
    * https://developers.cloudflare.com/workers/configuration/secrets/
    */
   "vars": {
-    "X402_NETWORK": "testnet" // "mainnet"
+    "X402_FACILITATOR_URL": "https://facilitator.x402stacks.xyz",
+    "X402_NETWORK": "testnet", // "mainnet"
+    "X402_PAYMENT_AMOUNT_STX": "0.003", // avg tx fee
+    "X402_PAYMENT_AMOUNT_SBTC": "0.000001", // 100 sats
+    "X402_SERVER_ADDRESS": "ST31JEZWX4S131326VKM05QKJ0TDGNVVE0DGNM4BP" // "SP31JEZWX4S131326VKM05QKJ0TDGNVVE0CDWWVA2"
   }
   /**
    * Static Assets
