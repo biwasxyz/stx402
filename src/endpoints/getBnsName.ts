@@ -38,6 +38,31 @@ export class GetBnsName extends OpenAPIRoute {
           },
         },
       },
+      "402": {
+        description: "Payment required",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object" as const,
+              properties: {
+                maxAmountRequired: { type: "string" as const } as const,
+                resource: { type: "string" as const } as const,
+                payTo: { type: "string" as const } as const,
+                network: {
+                  type: "string" as const,
+                  const: ["mainnet", "testnet"] as const,
+                } as const,
+                nonce: { type: "string" as const } as const,
+                expiresAt: { type: "string" as const } as const,
+                tokenType: {
+                  type: "string" as const,
+                  const: ["STX", "sBTC"] as const,
+                } as const,
+              } as const,
+            } as const,
+          } as const,
+        } as const,
+      },
       "404": {
         description: "No name found",
         content: {
