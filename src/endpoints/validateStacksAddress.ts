@@ -76,7 +76,7 @@ export class ValidateStacksAddress extends OpenAPIRoute {
   async handle(c: AppContext) {
     const address = c.req.param("address");
     if (validateStacksAddress(address)) {
-      return { valid: true };
+      return c.json({ valid: true });
     }
     return c.json({ valid: false, error: "Invalid Stacks address" }, 400);
   }

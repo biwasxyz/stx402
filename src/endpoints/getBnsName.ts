@@ -74,7 +74,7 @@ export class GetBnsName extends OpenAPIRoute {
       if (!name) {
         return c.json({ error: "No BNS name found" }, 404);
       }
-      return name; // Plain text 200
+      return c.text(name); // Plain text 200
     } catch (error) {
       return c.json({ error: "Internal server error" }, 500);
     }
