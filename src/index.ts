@@ -19,8 +19,11 @@ openapi.get("/api/health", Health);
 
 const paymentMiddleware = x402PaymentMiddleware();
 
-const handleGetBnsName = (c: Context<{ Bindings: Env }>) => new GetBnsName().handle(c);
-const handleValidateStacksAddress = (c: Context<{ Bindings: Env }>) => new ValidateStacksAddress().handle(c);
+type GetBnsNameHandler = (c: Context<{ Bindings: Env }, '/api/get-bns-name/:address'>) => Promise<Response>;
+const handleGetBnsName: GetBnsNameHandler = (c) => new GetBnsName().handle(c);
+
+type ValidateStacksAddressHandler = (c: Context<{ Bindings: Env }, '/api/validate-stacks-address/:address'>) => Promise<Response>;
+const handleValidateStacksAddress: ValidateStacksAddressHandler = (c) => new ValidateStacksAddress().handle(c);
 
 openapi.get("/api/get-bns-name/:address", paymentMiddleware, handleGetBnsName);
 openapi.get(
