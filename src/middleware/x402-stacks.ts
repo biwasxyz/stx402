@@ -9,7 +9,7 @@ export interface X402PaymentRequired {
   network: "mainnet" | "testnet";
   nonce: string;
   expiresAt: string;
-  tokenType?: "STX" | "sBTC";
+  tokenType: "STX" | "sBTC" | "USDCX";
 }
 
 export interface SettlePaymentResult {
@@ -24,8 +24,24 @@ export const x402PaymentMiddleware = () => {
     c: Context<{ Bindings: Env }>,
     next: () => Promise<Response | void>
   ) => {
+    let tokenType: "STX" | "sBTC" | "USDCX" = (c.req.query("tokenType") as any) || "STX";
+    const headerTokenType = c.req.header("X-PAYMENT-TOKEN-TYPE") as string | null;
+    if (headerTokenType && (headerTokenType === "STX" || headerTokenType === "sBTC" || headerTokenType === "USDCX")) {
+      tokenType = headerTokenType as "STX" | "sBTC" | "USDCX";
+    }
+
+    const amounts: Record<"STX" | "sBTC" | "USDCX", string> = {
+      STX: c.env.X402_PAYMENT_AMOUNT_STX!,
+      sBTC: c.env.X402_PAYMENT_AMOUNT_SBTC!,
+      USDCX: c.env.X402_PAYMENT_AMOUNT_USDCX || "0",
+    };
+    const amountStr = amounts[tokenType];
+    if (!amountStr || parseFloat(amountStr) === 0) {
+      return c.json({ error: `Unsupported or zero amount for tokenType: ${tokenType}` }, 400);
+    }
+
     const config = {
-      amountStx: c.env.X402_PAYMENT_AMOUNT_STX,
+      amountStx: amountStr,
       address: c.env.X402_SERVER_ADDRESS,
       network: c.env.X402_NETWORK as "mainnet" | "testnet",
       facilitatorUrl: c.env.X402_FACILITATOR_URL,
@@ -36,8 +52,6 @@ export const x402PaymentMiddleware = () => {
       config.network
     );
     const signedTx = c.req.header("X-PAYMENT");
-    const tokenType =
-      (c.req.header("X-PAYMENT-TOKEN-TYPE") as "STX" | "sBTC") || "STX";
 
     if (!signedTx) {
       // Respond 402 with payment request

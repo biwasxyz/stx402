@@ -16,6 +16,16 @@ export class ValidateStacksAddress extends OpenAPIRoute {
           example: "SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF",
         } as const,
       },
+      {
+        name: "tokenType",
+        in: "query" as const,
+        required: false,
+        schema: {
+          type: "string" as const,
+          enum: ["STX", "sBTC", "USDCX"] as const,
+          default: "STX",
+        } as const,
+      },
     ],
     responses: {
       "200": {

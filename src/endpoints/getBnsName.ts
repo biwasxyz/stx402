@@ -17,6 +17,16 @@ export class GetBnsName extends OpenAPIRoute {
           example: "SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF",
         } as const,
       },
+      {
+        name: "tokenType",
+        in: "query" as const,
+        required: false,
+        schema: {
+          type: "string" as const,
+          enum: ["STX", "sBTC", "USDCX"] as const,
+          default: "STX",
+        } as const,
+      },
     ],
     responses: {
       "200": {
@@ -54,10 +64,7 @@ export class GetBnsName extends OpenAPIRoute {
                 } as const,
                 nonce: { type: "string" as const } as const,
                 expiresAt: { type: "string" as const } as const,
-                tokenType: {
-                  type: "string" as const,
-                  const: ["STX", "sBTC"] as const,
-                } as const,
+                tokenType: "STX" | "sBTC" | "USDCX",
               } as const,
             } as const,
           } as const,
