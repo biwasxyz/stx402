@@ -74,10 +74,18 @@ wrangler types      # Update Env types from bindings
 
 Manual E2E tests for paid endpoints (requires testnet mnemonic):
 
-```bash
-X402_CLIENT_PK="your mnemonic" X402_NETWORK="testnet" bun run tests/get-bns-address.test.ts
-X402_CLIENT_PK="your mnemonic" X402_NETWORK="testnet" bun run tests/validate-stacks-address.test.ts
-```
+1. Copy `.env.example` → `.env`:
+   ```
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and set `X402_CLIENT_PK="your mnemonic"`
+
+3. Run:
+   ```bash
+   bun run tests/get-bns-address.test.ts
+   bun run tests/validate-stacks-address.test.ts
+   ```
 
 ## Dependencies
 
