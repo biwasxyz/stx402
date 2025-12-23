@@ -1,8 +1,8 @@
-import { OpenAPIRoute } from "chanfana";
+import { BaseEndpoint } from "./BaseEndpoint";
 import z from "zod";
 import { type AppContext } from "../types";
 
-export class Health extends OpenAPIRoute {
+export class Health extends BaseEndpoint {
   schema = {
     tags: ["Health"],
     summary: "Check the STX402 service health",

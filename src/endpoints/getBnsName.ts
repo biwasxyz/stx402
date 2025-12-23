@@ -1,10 +1,8 @@
-import { OpenAPIRoute } from "chanfana";
-import { validateStacksAddress } from "@stacks/transactions";
+import { BaseEndpoint } from "./BaseEndpoint";
 import { getNameFromAddress } from "../utils/bns";
-import { validateTokenType } from "../utils/pricing";
 import type { AppContext } from "../types";
 
-export class GetBnsName extends OpenAPIRoute {
+export class GetBnsName extends BaseEndpoint {
   schema = {
     tags: ["BNS"],
     summary: "Get primary BNSV2 name for Stacks address",
@@ -97,24 +95,21 @@ export class GetBnsName extends OpenAPIRoute {
   };
 
   async handle(c: AppContext) {
-    const address = c.req.param("address");
-    if (!validateStacksAddress(address)) {
-      return c.json({ error: "Invalid Stacks address" }, 400);
+    const address = this.validateAddress(c);
+    if (!address) {
+      return this.errorResponse(c, "Invalid Stacks address", 400);
     }
 
-    const rawTokenType = c.req.query("tokenType") || "STX";
-    const tokenType = validateTokenType(rawTokenType);
+    const tokenType = this.getTokenType(c);
 
     try {
       const name = await getNameFromAddress(address);
       if (!name) {
-        return c.json({ error: "No BNS name found" }, 404);
+        return this.errorResponse(c, "No BNS name found", 404);
       }
-      return c.json({
-        name, tokenType
-      }); // Plain text 200
+      return c.json({ name, tokenType });
     } catch (error) {
-      return c.json({ tokenType, error: `Internal server error: ${String(error)}` }, 500);
+      return this.errorResponse(c, `Internal server error: ${String(error)}`, 500);
     }
   }
 }
