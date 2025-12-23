@@ -1,6 +1,6 @@
 # STX402
 
-Cloudflare Worker API for Stacks/BNS queries with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev). Paid endpoints require [X402 payment](https://x402.org) (~0.003 STX testnet).
+Cloudflare Worker API for Stacks/BNS queries with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev). Paid endpoints require [X402 payment](https://x402.org) (~0.003 STX | 100 sats sBTC | 0.001 USDCx testnet). Supports `?tokenType=STX|sBTC|USDCx` (case-insensitive).
 
 ## Endpoints
 
@@ -8,7 +8,7 @@ OpenAPI docs: `GET /`
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/health` | Health check |
+| `GET` | `/api/health` | Health check *(free)* |
 | `GET` | `/api/get-bns-name/:address` | Primary BNSv2 name for Stacks address *(paid)* |
 | `GET` | `/api/validate-stacks-address/:address` | Validate Stacks address *(paid)* |
 
@@ -75,8 +75,8 @@ wrangler types      # Update Env types from bindings
 Manual E2E tests for paid endpoints (requires testnet mnemonic):
 
 ```bash
-X402_CLIENT_PK="your mnemonic" X402_NETWORK="testnet" node tests/get-bns-address.test.ts
-X402_CLIENT_PK="your mnemonic" X402_NETWORK="testnet" node tests/validate-stacks-address.test.ts
+X402_CLIENT_PK="your mnemonic" X402_NETWORK="testnet" bun run tests/get-bns-address.test.ts
+X402_CLIENT_PK="your mnemonic" X402_NETWORK="testnet" bun run tests/validate-stacks-address.test.ts
 ```
 
 ## Dependencies
