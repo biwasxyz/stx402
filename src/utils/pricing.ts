@@ -9,10 +9,15 @@ const DEFAULT_AMOUNTS: Record<TokenType, string> = {
 };
 
 export function validateTokenType(tokenTypeStr: string): TokenType {
-  const upper = tokenTypeStr.toUpperCase() as TokenType;
+  const upper = tokenTypeStr.toUpperCase();
+  const validMap: Record<string, TokenType> = {
+    "STX": "STX",
+    "SBTC": "sBTC",
+    "USDCX": "USDCx",
+  };
   const validTokens: TokenType[] = ["STX", "sBTC", "USDCx"];
-  if (validTokens.includes(upper)) {
-    return upper;
+  if (validMap[upper]) {
+    return validMap[upper];
   }
   throw new Error(`Invalid tokenType: ${tokenTypeStr}. Supported: ${validTokens.join(", ")}`);
 }
