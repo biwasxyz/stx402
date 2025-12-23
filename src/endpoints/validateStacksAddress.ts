@@ -4,7 +4,7 @@ import type { AppContext } from "../types";
 export class ValidateStacksAddress extends BaseEndpoint {
   schema = {
     tags: ["Addresses"],
-    summary: "Validate a Stacks address",
+    summary: "(paid) Validate a Stacks address",
     parameters: [
       {
         name: "address",
