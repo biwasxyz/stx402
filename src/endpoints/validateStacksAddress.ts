@@ -71,10 +71,7 @@ export class ValidateStacksAddress extends OpenAPIRoute {
                 } as const,
                 nonce: { type: "string" as const } as const,
                 expiresAt: { type: "string" as const } as const,
-                tokenType: {
-                  type: "string" as const,
-                  const: ["STX", "sBTC"] as const,
-                } as const,
+                tokenType: "STX" | "sBTC" | "USDCX",
               } as const,
             } as const,
           } as const,
