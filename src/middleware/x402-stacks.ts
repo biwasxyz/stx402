@@ -76,12 +76,33 @@ export const x402PaymentMiddleware = () => {
       })) as SettlePaymentResult;
     } catch (error) {
       console.error("settlePayment error:", error);
-      return c.json({ error: "Payment settlement failed", details: String(error) }, 402);
+      // Graceful: allow retry (e.g. network issue)
+      const retryPaymentReq: X402PaymentRequired = {
+        maxAmountRequired: config.minAmount.toString(),
+        resource: c.req.path,
+        payTo: config.address,
+        network: config.network,
+        nonce: crypto.randomUUID(),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        tokenType,
+      };
+      return c.json(retryPaymentReq, 402);
     }
 
-
     if (!settleResult.isValid) {
-      return c.json({ error: "Payment invalid or unconfirmed", details: settleResult }, 402);
+      console.error("Payment invalid/unconfirmed:", settleResult);
+      // Graceful: allow retry after funding/confirmation
+      // Common cases: insufficient funds (rejected), pending, expired nonce
+      const retryPaymentReq: X402PaymentRequired = {
+        maxAmountRequired: config.minAmount.toString(),
+        resource: c.req.path,
+        payTo: config.address,
+        network: config.network,
+        nonce: crypto.randomUUID(),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        tokenType,
+      };
+      return c.json(retryPaymentReq, 402);
     }
 
     // Add X-PAYMENT-RESPONSE header
