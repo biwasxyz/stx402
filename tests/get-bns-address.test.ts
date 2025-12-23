@@ -2,7 +2,8 @@ import { X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 
 
-const X402_WORKER_URL = "https://stx402.chaos.workers.dev";
+//const X402_WORKER_URL = "https://stx402.chaos.workers.dev";
+const X402_WORKER_URL = "http://localhost:8787";
 const X402_CLIENT_PK = process.env.X402_CLIENT_PK;
 const X402_TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Has BNS: stacks.btc
 const X402_ENDPOINT = `/api/get-bns-name/${X402_TEST_ADDRESS}`;
@@ -44,7 +45,7 @@ async function testX402ManualFlow() {
   }
 
   const paymentReq: X402PaymentRequired = await initialRes.json();
-  console.log("  402 Payment req:", paymentReq);
+  console.log("402 Payment req:", paymentReq);
 
   if (paymentReq.tokenType !== "STX") throw new Error("Test assumes STX");
 

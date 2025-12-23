@@ -2,11 +2,14 @@ import {
   BufferCV,
   ClarityType,
   cvToValue,
+  fetchCallReadOnlyFunction,
   principalCV,
   serializeCV,
   TupleCV,
 } from "@stacks/transactions";
 import { getFetchOptions, setFetchOptions } from "@stacks/common";
+import { getNetworkFromPrincipal } from "./network";
+import { hexToAscii } from "./hex-to-ascii";
 
 const BNS_CONTRACT_ADDRESS = "SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF";
 const BNS_CONTRACT_NAME = "BNS-V2";
@@ -23,45 +26,40 @@ type NameResponse = { name: BufferCV; namespace: BufferCV };
 type BnsNameResponse =
   | { type: ClarityType.ResponseErr; value: string }
   | {
-      type: ClarityType.ResponseOk;
-      value: { type: ClarityType.OptionalSome; value: TupleCV<NameResponse> };
-    };
-
-export async function getNameFromAddress(address: string): Promise<string> {
-  const addressCV = principalCV(address);
-  const serializedAddressCV = serializeCV(addressCV);
-  const url = `${API_URL}/${BNS_CONTRACT_ADDRESS}/${BNS_CONTRACT_NAME}/get-primary`;
-  const body = {
-    arguments: [serializedAddressCV],
-    sender: address,
+    type: ClarityType.ResponseOk;
+    value: { type: ClarityType.OptionalSome; value: TupleCV<NameResponse> };
   };
 
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+export async function getNameFromAddress(address: string): Promise<string> {
+  console.log("getNameFromAddress:", address);
+  const addressCV = principalCV(address);
+  const addressNetwork = getNetworkFromPrincipal(address)
 
-  if (!resp.ok) {
-    throw new Error(`Hiro API error: ${resp.status}`);
-  }
+  const result = await fetchCallReadOnlyFunction({
+    contractAddress: BNS_CONTRACT_ADDRESS,
+    contractName: BNS_CONTRACT_NAME,
+    functionName: "get-primary",
+    functionArgs: [addressCV],
+    senderAddress: address,
+    network: addressNetwork,
+  }) as BnsNameResponse
 
-  const data = (await resp.json()) as BnsNameResponse;
-
-  if (data.type === ClarityType.ResponseErr) {
+  if (result.type === ClarityType.ResponseErr) {
     return "";
   }
 
   if (
-    data.type === ClarityType.ResponseOk &&
-    data.value?.type === ClarityType.OptionalSome
+    result.type === ClarityType.ResponseOk &&
+    result.value?.type === ClarityType.OptionalSome
   ) {
-    const tuple = data.value.value as TupleCV<NameResponse>;
+    const tuple = result.value.value as TupleCV<NameResponse>;
     const { name, namespace } = tuple.value;
     const nameBuff = cvToValue(name);
     const namespaceBuff = cvToValue(namespace);
+    const nameAscii = hexToAscii(nameBuff);
+    const namespaceAscii = hexToAscii(namespaceBuff);
 
-    return `${nameBuff}.${namespaceBuff}`;
+    return `${nameAscii}.${namespaceAscii}`;
   }
 
   return "";
