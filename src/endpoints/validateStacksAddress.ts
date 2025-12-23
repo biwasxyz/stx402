@@ -86,8 +86,8 @@ export class ValidateStacksAddress extends OpenAPIRoute {
     const rawTokenType = c.req.query("tokenType") || "STX";
     const tokenType = validateTokenType(rawTokenType);
     if (validateStacksAddress(address)) {
-      return c.json({ valid: true });
+      return c.json({ valid: true, tokenType });
     }
-    return c.json({ valid: false, error: "Invalid Stacks address" }, 400);
+    return c.json({ valid: false, tokenType, error: "Invalid Stacks address" }, 400);
   }
 }
