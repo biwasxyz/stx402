@@ -11,6 +11,8 @@ OpenAPI docs: `GET /`
 | `GET` | `/api/health` | Health check *(free)* |
 | `GET` | `/api/get-bns-name/:address` | Primary BNSv2 name for Stacks address *(paid)* |
 | `GET` | `/api/validate-stacks-address/:address` | Validate Stacks address *(paid)* |
+| `GET` | `/api/convert-address-to-network/:address?network=mainnet` | Convert Stacks address to network *(paid)* |
+| `POST` | `/api/decode-clarity-hex` | Decode ClarityValue from hex *(paid)* |
 
 ## Project Structure
 

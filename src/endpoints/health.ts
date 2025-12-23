@@ -1,5 +1,4 @@
 import { BaseEndpoint } from "./BaseEndpoint";
-import z from "zod";
 import { type AppContext } from "../types";
 
 export class Health extends BaseEndpoint {
@@ -12,12 +11,18 @@ export class Health extends BaseEndpoint {
         description: "Service health status",
         content: {
           "application/json": {
-            schema: z.object({
-              status: z.literal("ok"),
-              details: z.object({
-                timestamp: z.string(),
-              }),
-            }),
+            schema: {
+              type: "object" as const,
+              properties: {
+                status: { type: "string" as const, const: "ok" } as const,
+                details: {
+                  type: "object" as const,
+                  properties: {
+                    timestamp: { type: "string" as const } as const,
+                  } as const,
+                } as const,
+              } as const,
+            } as const,
           },
         },
       },
@@ -25,11 +30,11 @@ export class Health extends BaseEndpoint {
   };
 
   async handle(c: AppContext) {
-    return {
+    return c.json({
       status: "ok",
       details: {
         timestamp: new Date().toISOString(),
       },
-    };
+    });
   }
 }

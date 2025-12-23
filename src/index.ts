@@ -5,6 +5,7 @@ import { Health } from "./endpoints/health";
 import { GetBnsName } from "./endpoints/getBnsName";
 import { ValidateStacksAddress } from "./endpoints/validateStacksAddress";
 import { ConvertAddressToNetwork } from "./endpoints/convertAddressToNetwork";
+import { DecodeClarityHex } from "./endpoints/decodeClarityHex";
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 
 // Start a Hono app
@@ -32,12 +33,12 @@ openapi.get(
   paymentMiddleware,
   ValidateStacksAddress as any
 );
-
 openapi.get(
   "/api/convert-address-to-network/:address",
   paymentMiddleware,
   ConvertAddressToNetwork as any
 );
+openapi.post("/api/decode-clarity-hex", paymentMiddleware, DecodeClarityHex as any);
 
 // You may also register routes for non OpenAPI directly on Hono
 // app.get('/test', (c) => c.text('Hono!'))
