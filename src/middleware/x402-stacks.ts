@@ -1,6 +1,7 @@
 import type { Context } from "hono";
-import { X402PaymentVerifier, STXtoMicroSTX } from "x402-stacks";
+import { X402PaymentVerifier } from "x402-stacks";
 import { replaceBigintWithString } from "../utils/bigint";
+import { getPaymentAmount, type TokenType, validateTokenType } from "../utils/pricing";
 
 export interface X402PaymentRequired {
   maxAmountRequired: string;
@@ -9,7 +10,7 @@ export interface X402PaymentRequired {
   network: "mainnet" | "testnet";
   nonce: string;
   expiresAt: string;
-  tokenType: "STX" | "sBTC" | "USDCX";
+  tokenType: TokenType;
 }
 
 export interface SettlePaymentResult {
@@ -24,41 +25,20 @@ export const x402PaymentMiddleware = () => {
     c: Context<{ Bindings: Env }>,
     next: () => Promise<Response | void>
   ) => {
-    let tokenType: "STX" | "sBTC" | "USDCX" = (c.req.query("tokenType") as any) || "STX";
-    const headerTokenType = c.req.header("X-PAYMENT-TOKEN-TYPE") as string | null;
-    if (headerTokenType && (headerTokenType === "STX" || headerTokenType === "sBTC" || headerTokenType === "USDCX")) {
-      tokenType = headerTokenType as "STX" | "sBTC" | "USDCX";
-    }
+    const queryTokenType = c.req.query("tokenType") ?? "STX";
+    const headerTokenType = c.req.header("X-PAYMENT-TOKEN-TYPE") ?? "";
+    const tokenTypeStr = headerTokenType || queryTokenType;
 
-    const amounts: Record<"STX" | "sBTC" | "USDCX", string> = {
-      STX: c.env.X402_PAYMENT_AMOUNT_STX!,
-      sBTC: c.env.X402_PAYMENT_AMOUNT_SBTC!,
-      USDCX: c.env.X402_PAYMENT_AMOUNT_USDCX || "0",
-    };
-    const amountStr = amounts[tokenType];
-    if (!amountStr || parseFloat(amountStr) === 0) {
-      return c.json({ error: `Unsupported or zero amount for tokenType: ${tokenType}` }, 400);
-    }
-
-    // Token-specific unit conversion to smallest units (microSTX/sats/microUSDC)
+    let tokenType: TokenType;
     let minAmount: bigint;
-    const amountNum = parseFloat(amountStr);
-    switch (tokenType) {
-      case "STX":
-        minAmount = STXtoMicroSTX(amountStr);
-        break;
-      case "sBTC":
-        minAmount = BigInt(Math.floor(amountNum * 1e8)); // BTC to sats
-        break;
-      case "USDCX":
-        minAmount = BigInt(Math.floor(amountNum * 1e6)); // USD to micro-USD
-        break;
-      default:
-        throw new Error(`Unknown tokenType: ${tokenType}`);
+    try {
+      tokenType = validateTokenType(tokenTypeStr);
+      minAmount = getPaymentAmount(tokenType);
+    } catch (error) {
+      return c.json({ error: String(error) }, 400);
     }
 
     const config = {
-      amountStr,
       minAmount,
       address: c.env.X402_SERVER_ADDRESS,
       network: c.env.X402_NETWORK as "mainnet" | "testnet",
