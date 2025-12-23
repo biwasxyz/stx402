@@ -1,5 +1,5 @@
 import { OpenAPIRoute } from "chanfana";
-import { validateStacksAddress } from "@stacks/transactions";
+import { Address } from "@stacks/transactions";
 import { validateTokenType } from "../utils/pricing";
 import type { AppContext } from "../types";
 import { ContentfulStatusCode } from "hono/utils/http-status";
@@ -12,7 +12,13 @@ export class BaseEndpoint extends OpenAPIRoute {
 
   protected validateAddress(c: AppContext): string | null {
     const address = c.req.param("address");
-    return validateStacksAddress(address) ? address : null;
+    try {
+      const addressObj = Address.parse(address);
+      return Address.stringify(addressObj);
+    } catch (e) {
+      console.error(String(e));
+      return null;
+    }
   }
 
   protected errorResponse(
