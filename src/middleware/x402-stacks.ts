@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { X402PaymentVerifier, STXtoMicroSTX } from "x402-stacks";
+import { replaceBigintWithString } from "../utils/bigint";
 
 export interface X402PaymentRequired {
   maxAmountRequired: string;
@@ -76,7 +77,7 @@ export const x402PaymentMiddleware = () => {
       return c.json({ error: "Payment settlement failed", details: String(error) }, 402);
     }
 
-    console.log("SettleResult:", JSON.stringify(settleResult, null, 2));
+    console.log("SettleResult:", JSON.stringify(settleResult, replaceBigintWithString, 2));
 
     if (!settleResult.isValid) {
       console.log("Payment invalid details:", settleResult);
@@ -87,7 +88,7 @@ export const x402PaymentMiddleware = () => {
     console.log("=== X402 DEBUG END (SUCCESS) ===");
 
     // Add X-PAYMENT-RESPONSE header
-    c.header("X-PAYMENT-RESPONSE", JSON.stringify(settleResult));
+    c.header("X-PAYMENT-RESPONSE", JSON.stringify(settleResult, replaceBigintWithString));
 
     return next();
   };
