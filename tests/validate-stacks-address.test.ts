@@ -4,8 +4,8 @@ import { deriveChildAccount } from "../src/utils/wallet";
 const X402_CLIENT_PK = process.env.X402_CLIENT_PK;
 const X402_NETWORK = process.env.X402_NETWORK || "testnet";
 
-//const X402_WORKER_URL = "https://stx402.chaos.workers.dev";
-const X402_WORKER_URL = "http://localhost:8787";
+const X402_WORKER_URL = "https://stx402.chaos.workers.dev";
+//const X402_WORKER_URL = "http://localhost:8787";
 const X402_TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Valid Stacks address
 const X402_ENDPOINT = `/api/validate-stacks-address/${X402_TEST_ADDRESS}`;
 
