@@ -1,11 +1,7 @@
 import { TokenType, X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
+import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL } from "./_shared_utils";
 
-const X402_CLIENT_PK = process.env.X402_CLIENT_PK;
-const X402_NETWORK = process.env.X402_NETWORK || "testnet";
-
-const X402_WORKER_URL = "https://stx402.chaos.workers.dev";
-//const X402_WORKER_URL = "http://localhost:8787";
 const X402_TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Has BNS: stacks.btc
 const X402_ENDPOINT = `/api/get-bns-name/${X402_TEST_ADDRESS}`;
 
@@ -35,11 +31,11 @@ async function testX402ManualFlow() {
   console.log("  test address:", address);
 
   const x402Client = new X402PaymentClient({
-    network: "testnet",
+    network: X402_NETWORK,
     privateKey: key,
   });
 
-  for (const tokenType of ["STX", "sBTC"] as const) {
+  for (const tokenType of TEST_TOKENS) {
     console.log(`\n--- Testing with tokenType: ${tokenType} ---`);
     const endpoint = `${X402_ENDPOINT}?tokenType=${tokenType}`;
 
