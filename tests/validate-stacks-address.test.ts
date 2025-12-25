@@ -1,6 +1,6 @@
 import { TokenType, X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
-import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL } from "./_shared_utils";
+import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL, createTestLogger } from "./_shared_utils";
 
 const X402_TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Valid Stacks address
 const X402_ENDPOINT = `/api/validate-stacks-address/${X402_TEST_ADDRESS}`;
@@ -28,18 +28,20 @@ async function testX402ManualFlow() {
     0
   );
 
-  console.log("  test address:", address);
+  const logger = createTestLogger("validate-stacks-address");
+  logger.info(`Test wallet address: ${address}`);
 
   const x402Client = new X402PaymentClient({
     network: X402_NETWORK,
     privateKey: key,
   });
 
+  let successCount = 0;
   for (const tokenType of TEST_TOKENS) {
-    console.log(`\n--- Testing with tokenType: ${tokenType} ---`);
+    logger.info(`--- Testing ${tokenType} ---`);
     const endpoint = `${X402_ENDPOINT}?tokenType=${tokenType}`;
 
-    console.log("1. Initial request (expect 402)...");
+    logger.info("1. Initial request (expect 402)...");
     const initialRes = await fetch(`${X402_WORKER_URL}${endpoint}`);
     if (initialRes.status !== 402) {
       throw new Error(
@@ -48,14 +50,14 @@ async function testX402ManualFlow() {
     }
 
     const paymentReq: X402PaymentRequired = await initialRes.json();
-    console.log("402 Payment req:", paymentReq);
+    logger.info(`402 Payment req: ${JSON.stringify(paymentReq)}`);
 
     if (paymentReq.tokenType !== tokenType)
       throw new Error(`Expected tokenType ${tokenType}`);
 
     const signResult = await x402Client.signPayment(paymentReq);
 
-    console.log("3. Retry with X-PAYMENT...");
+    logger.info("3. Retry with X-PAYMENT...");
     const retryRes = await fetch(`${X402_WORKER_URL}${endpoint}`, {
       headers: {
         "X-PAYMENT": signResult.signedTransaction,
@@ -63,28 +65,28 @@ async function testX402ManualFlow() {
       },
     });
 
-    console.log("Retry status:", retryRes.status);
+    logger.info(`Retry status: ${retryRes.status}`);
     if (retryRes.status !== 200) {
-      console.error("Failed:", await retryRes.text());
-      return;
+      logger.error(`Retry failed for ${tokenType}: ${await retryRes.text()}`);
+      continue;
     }
 
     const data = await retryRes.json();
-    console.log("✅ Data:", JSON.stringify(data, null, 2));
+    logger.success(`Validation for ${tokenType}: ${JSON.stringify(data, null, 2)}`);
 
     if (!data.valid) {
-      console.error("Expected valid: true");
-      return;
+      logger.error(`Expected valid: true for ${tokenType}`);
+      continue;
     }
+    successCount++;
 
     const paymentResp = retryRes.headers.get("x-payment-response");
     if (paymentResp) {
       const info = JSON.parse(paymentResp);
-      console.log("Payment confirmed:", info);
+      logger.info(`Payment confirmed: ${JSON.stringify(info)}`);
     }
-
-    console.log("🎉 FULL SUCCESS: Paid → Got address validation!");
   }
+  logger.summary(successCount, TEST_TOKENS.length);
 }
 
 testX402ManualFlow().catch((e) => console.error("❌ Error:", e));
