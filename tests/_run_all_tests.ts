@@ -3,7 +3,7 @@ import { testX402ManualFlow as testConvertAddress } from "./convert-address-to-n
 import { testX402ManualFlow as testGetBns } from "./get-bns-address.test.js";
 import { testX402ManualFlow as testValidateAddress } from "./validate-stacks-address.test.js";
 
-import { COLORS } from "./_shared_utils.js";
+import { COLORS, TEST_TOKENS } from "./_shared_utils.js";
 
 async function runAllTests() {
   const verbose = process.env.VERBOSE === "1";
@@ -20,8 +20,11 @@ async function runAllTests() {
     { name: "validate-stacks-address", fn: testValidateAddress },
   ];
 
-  let globalSuccess = 0;
-  const globalTotal = tests.length;
+  interface TokenStats {
+    success: number;
+    total: number;
+  }
+  const tokenStats: Record<string, TokenStats> = {};
 
   for (const t of tests) {
     console.log(`${COLORS.bright}━${"━".repeat(60)}━${COLORS.reset}`);
@@ -29,17 +32,40 @@ async function runAllTests() {
     console.log(`${COLORS.bright}━${"━".repeat(60)}━${COLORS.reset}\n`);
 
     try {
-      await t.fn(verbose);
-      globalSuccess++;
+      const result = await t.fn(verbose) as { tokenResults: Record<string, boolean> };
+      for (const [token, passed] of Object.entries(result.tokenResults)) {
+        if (!tokenStats[token]) {
+          tokenStats[token] = { success: 0, total: 0 };
+        }
+        tokenStats[token]!.total++;
+        if (passed) {
+          tokenStats[token]!.success++;
+        }
+      }
     } catch (e) {
       console.log(`${COLORS.bright}${COLORS.red}💥 ${t.name.toUpperCase()} CRASHED:${COLORS.reset}`);
       console.error(e);
+      for (const token of TEST_TOKENS) {
+        if (!tokenStats[token]) {
+          tokenStats[token] = { success: 0, total: 0 };
+        }
+        tokenStats[token]!.total++;
+      }
     }
     console.log();
   }
 
-  const passRate = ((globalSuccess / globalTotal) * 100).toFixed(1);
-  console.log(`${COLORS.bright}🎉 FINAL SUMMARY: ${globalSuccess}/${globalTotal} passed (${passRate}%)${COLORS.reset}`);
+  const globalSuccess = Object.values(tokenStats).reduce((sum, s) => sum + s.success, 0);
+  const globalTotal = Object.values(tokenStats).reduce((sum, s) => sum + s.total, 0);
+  const passRate = globalTotal ? ((globalSuccess / globalTotal) * 100).toFixed(1) : "0.0";
+
+  const summaryParts: string[] = [];
+  for (const [token, stats] of Object.entries(tokenStats)) {
+    const tokenRate = ((stats.success / stats.total) * 100).toFixed(1);
+    summaryParts.push(`${token}:${stats.success}/${stats.total} (${tokenRate}%)`);
+  }
+
+  console.log(`${COLORS.bright}🎉 FINAL SUMMARY: ${summaryParts.join(", ")} | Total: ${globalSuccess}/${globalTotal} (${passRate}%)${COLORS.reset}`);
 }
 
 runAllTests().catch(console.error);

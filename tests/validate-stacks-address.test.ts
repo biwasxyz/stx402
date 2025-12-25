@@ -36,7 +36,11 @@ export async function testX402ManualFlow(verbose = false) {
     privateKey: key,
   });
 
-  let successCount = 0;
+  const tokenResults: Record<string, boolean> = TEST_TOKENS.reduce((acc, t) => {
+    acc[t] = false;
+    return acc;
+  }, {} as Record<string, boolean>);
+
   for (const tokenType of TEST_TOKENS) {
     logger.info(`--- Testing ${tokenType} ---`);
     const endpoint = `${X402_ENDPOINT}?tokenType=${tokenType}`;
@@ -82,7 +86,7 @@ export async function testX402ManualFlow(verbose = false) {
       logger.debug("Full response", data);
       continue;
     }
-    successCount++;
+    tokenResults[tokenType] = true;
 
     const paymentResp = retryRes.headers.get("x-payment-response");
     if (paymentResp) {
@@ -90,5 +94,7 @@ export async function testX402ManualFlow(verbose = false) {
       logger.debug("Payment confirmed", info);
     }
   }
+  const successCount = Object.values(tokenResults).filter(v => v).length;
   logger.summary(successCount, TEST_TOKENS.length);
+  return { tokenResults };
 }
