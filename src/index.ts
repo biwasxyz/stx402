@@ -12,6 +12,8 @@ import { DadJoke } from "./endpoints/dadJoke";
 import { ImageDescribe } from "./endpoints/imageDescribe";
 import { Tts } from "./endpoints/tts";
 import { Summarize } from "./endpoints/summarize";
+import { BetCoinToss } from "./endpoints/betCoinToss";
+import { BetDice } from "./endpoints/betDice";
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 
 // Start a Hono app
@@ -60,6 +62,9 @@ openapi.get("/api/dad-joke", paymentMiddleware, DadJoke as any);
 openapi.post("/api/ai/image-describe", paymentMiddleware, ImageDescribe as any);
 openapi.post("/api/ai/tts", paymentMiddleware, Tts as any);
 openapi.post("/api/ai/summarize", paymentMiddleware, Summarize as any);
+
+openapi.post("/api/bet/coin-toss", paymentMiddleware, BetCoinToss as any);
+openapi.post("/api/bet/dice", paymentMiddleware, BetDice as any);
 
 // You may also register routes for non OpenAPI directly on Hono
 // app.get('/test', (c) => c.text('Hono!'))
