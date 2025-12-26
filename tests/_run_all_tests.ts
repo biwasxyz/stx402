@@ -1,12 +1,17 @@
-import { testX402ManualFlow as testDecodeClarity } from "./decode-clarity-hex.test.js";
-import { testX402ManualFlow as testConvertAddress } from "./convert-address-to-network.test.js";
-import { testX402ManualFlow as testGetBns } from "./get-bns-address.test.js";
-import { testX402ManualFlow as testValidateAddress } from "./validate-stacks-address.test.js";
-import { testX402ManualFlow as testDadJoke } from "./dad-joke.test.js";
-import { testX402ManualFlow as testDeepThought } from "./deep-thought.test.js";
-import { testX402ManualFlow as testCoinToss } from "./coin-toss.test.js";
-import { testX402ManualFlow as testBetCoinToss } from "./bet-coin-toss.test.js";
-import { testX402ManualFlow as testBetDice } from "./bet-dice.test.js";
+import { testX402ManualFlow as testDecodeClarity } from "./decode-clarity-hex.test.ts";
+import { testX402ManualFlow as testConvertAddress } from "./convert-address-to-network.test.ts";
+import { testX402ManualFlow as testGetBns } from "./get-bns-address.test.ts";
+import { testX402ManualFlow as testValidateAddress } from "./validate-stacks-address.test.ts";
+import { testX402ManualFlow as testDadJoke } from "./dad-joke.test.ts";
+import { testX402ManualFlow as testDeepThought } from "./deep-thought.test.ts";
+import { testX402ManualFlow as testCoinToss } from "./coin-toss.test.ts";
+import { testX402ManualFlow as testBetCoinToss } from "./bet-coin-toss.test.ts";
+import { testX402ManualFlow as testBetDice } from "./bet-dice.test.ts";
+
+import { testX402ManualFlow as testTts } from "./tts.test.ts";
+import { testX402ManualFlow as testSummarize } from "./summarize.test.ts";
+import { testX402ManualFlow as testImageDescribe } from "./image-describe.test.ts";
+import { testX402ManualFlow as testGenerateImage } from "./generate-image.test.ts";
 
 import { COLORS, TEST_TOKENS } from "./_shared_utils.js";
 
@@ -28,6 +33,10 @@ async function runAllTests() {
     { name: "coin-toss", fn: testCoinToss },
     { name: "bet-coin-toss", fn: testBetCoinToss },
     { name: "bet-dice", fn: testBetDice },
+    { name: "tts", fn: testTts },
+    { name: "summarize", fn: testSummarize },
+    { name: "image-describe", fn: testImageDescribe },
+    { name: "generate-image", fn: testGenerateImage },
   ];
 
   interface TokenStats {
