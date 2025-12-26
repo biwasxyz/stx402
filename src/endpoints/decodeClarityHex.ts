@@ -5,7 +5,7 @@ import type { AppContext } from "../types";
 
 export class DecodeClarityHex extends BaseEndpoint {
   schema = {
-    tags: ["Clarity"],
+    tags: ["Stacks"],
     summary: "(paid) Decode Clarity value from hex string",
     parameters: [
       {
