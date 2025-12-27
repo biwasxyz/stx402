@@ -2,8 +2,7 @@ import { TokenType, X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL, createTestLogger } from "./_shared_utils";
 
-const CLARITY_HEX = "0x0d0000000a68656c6c6f2078343032"; // StringAsciiCV "hello x402"
-const X402_ENDPOINT = `/api/decode-clarity-hex`;
+const X402_ENDPOINT = `/api/tts`;
 
 interface X402PaymentRequired {
   maxAmountRequired: string;
@@ -28,7 +27,7 @@ export async function testX402ManualFlow(verbose = false) {
     0
   );
 
-  const logger = createTestLogger("decode-clarity-hex", verbose);
+  const logger = createTestLogger("tts", verbose);
   logger.info(`Test wallet address: ${address}`);
 
   const x402Client = new X402PaymentClient({
@@ -41,11 +40,14 @@ export async function testX402ManualFlow(verbose = false) {
     return acc;
   }, {} as Record<string, boolean>);
 
+  const requestBody = {
+    text: "Hello, this is a test for STX402 TTS.",
+    speaker: "angus"
+  };
+
   for (const tokenType of TEST_TOKENS) {
     logger.info(`--- Testing ${tokenType} ---`);
-    const endpoint = `${X402_ENDPOINT}?tokenType=${tokenType}`;
-
-    const requestBody = { hex: CLARITY_HEX };
+    const endpoint = `${X402_ENDPOINT}?tokenType=${tokenType}&lang=en`;
 
     logger.info("1. Initial request (expect 402)...");
     const initialRes = await fetch(`${X402_WORKER_URL}${endpoint}`, {
@@ -88,16 +90,13 @@ export async function testX402ManualFlow(verbose = false) {
     }
 
     const data = await retryRes.json();
-    if (
-      data.decoded === "hello x402" &&
-      data.hex === CLARITY_HEX &&
-      data.tokenType === tokenType
-    ) {
-      logger.success(`Decoded "${data.decoded}" (${data.hex}) for ${tokenType}`);
+    if (typeof data.audio === "string" && data.audio.length > 100 && data.tokenType === tokenType) {
+      logger.success(`TTS audio generated (${data.audio.length} chars) for ${tokenType}`);
       tokenResults[tokenType] = true;
     } else {
-      logger.error(`Validation failed for ${tokenType}: decoded="${data.decoded ?? 'null'}", hex match=${data.hex === CLARITY_HEX}, token match=${data.tokenType === tokenType}`);
+      logger.error(`Validation failed for ${tokenType}: audio=${typeof data.audio}, length=${data.audio?.length ?? 0}, token match=${data.tokenType === tokenType}`);
       logger.debug("Full response", data);
+      continue;
     }
 
     const paymentResp = retryRes.headers.get("x-payment-response");

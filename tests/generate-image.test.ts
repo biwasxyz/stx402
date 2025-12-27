@@ -2,8 +2,7 @@ import { TokenType, X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL, createTestLogger } from "./_shared_utils";
 
-const CLARITY_HEX = "0x0d0000000a68656c6c6f2078343032"; // StringAsciiCV "hello x402"
-const X402_ENDPOINT = `/api/decode-clarity-hex`;
+const X402_ENDPOINT = `/api/generate-image`;
 
 interface X402PaymentRequired {
   maxAmountRequired: string;
@@ -28,7 +27,7 @@ export async function testX402ManualFlow(verbose = false) {
     0
   );
 
-  const logger = createTestLogger("decode-clarity-hex", verbose);
+  const logger = createTestLogger("generate-image", verbose);
   logger.info(`Test wallet address: ${address}`);
 
   const x402Client = new X402PaymentClient({
@@ -41,11 +40,13 @@ export async function testX402ManualFlow(verbose = false) {
     return acc;
   }, {} as Record<string, boolean>);
 
+  const requestBody = {
+    prompt: "a simple red circle on a white background"
+  };
+
   for (const tokenType of TEST_TOKENS) {
     logger.info(`--- Testing ${tokenType} ---`);
     const endpoint = `${X402_ENDPOINT}?tokenType=${tokenType}`;
-
-    const requestBody = { hex: CLARITY_HEX };
 
     logger.info("1. Initial request (expect 402)...");
     const initialRes = await fetch(`${X402_WORKER_URL}${endpoint}`, {
@@ -87,18 +88,15 @@ export async function testX402ManualFlow(verbose = false) {
       continue;
     }
 
-    const data = await retryRes.json();
-    if (
-      data.decoded === "hello x402" &&
-      data.hex === CLARITY_HEX &&
-      data.tokenType === tokenType
-    ) {
-      logger.success(`Decoded "${data.decoded}" (${data.hex}) for ${tokenType}`);
-      tokenResults[tokenType] = true;
-    } else {
-      logger.error(`Validation failed for ${tokenType}: decoded="${data.decoded ?? 'null'}", hex match=${data.hex === CLARITY_HEX}, token match=${data.tokenType === tokenType}`);
-      logger.debug("Full response", data);
+    const contentType = retryRes.headers.get("content-type") || "";
+    if (!contentType.includes("image/png")) {
+      const errText = await retryRes.text();
+      logger.error(`Expected image/png, got ${contentType} for ${tokenType}: ${errText.substring(0, 200)}`);
+      continue;
     }
+
+    logger.success(`Image generated (${contentType}) for ${tokenType}`);
+    tokenResults[tokenType] = true;
 
     const paymentResp = retryRes.headers.get("x-payment-response");
     if (paymentResp) {

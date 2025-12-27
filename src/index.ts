@@ -19,6 +19,7 @@ import { DadJoke } from "./endpoints/dadJoke";
 import { ImageDescribe } from "./endpoints/imageDescribe";
 import { Tts } from "./endpoints/tts";
 import { Summarize } from "./endpoints/summarize";
+import { GenerateImage } from "./endpoints/generateImage";
 
 // Betting endpoints
 import { BetCoinToss } from "./endpoints/betCoinToss";
@@ -77,6 +78,7 @@ openapi.get("/api/dad-joke", paymentMiddleware, DadJoke as any);
 openapi.post("/api/ai/image-describe", paymentMiddleware, ImageDescribe as any);
 openapi.post("/api/ai/tts", paymentMiddleware, Tts as any);
 openapi.post("/api/ai/summarize", paymentMiddleware, Summarize as any);
+openapi.post("/api/generate-image", paymentMiddleware, GenerateImage as any);
 
 // Betting endpoints
 openapi.post("/api/bet/coin-toss", paymentMiddleware, BetCoinToss as any);
