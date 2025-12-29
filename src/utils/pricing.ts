@@ -31,6 +31,17 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/stacks/validate-address": "simple",
   "/api/stacks/convert-address": "simple",
   "/api/stacks/decode-clarity-hex": "simple",
+  "/api/stacks/contract-source": "simple",
+  "/api/stacks/contract-abi": "simple",
+  "/api/stacks/to-consensus-buff": "simple",
+  "/api/stacks/from-consensus-buff": "simple",
+  "/api/stacks/decode-tx": "simple",
+  "/api/stacks/call-readonly": "simple",
+  "/api/stacks/stx-balance": "simple",
+  "/api/stacks/block-height": "simple",
+  "/api/stacks/ft-balance": "simple",
+  "/api/stacks/nft-holdings": "simple",
+  "/api/stacks/tx-status": "simple",
 
   // AI endpoints
   "/api/ai/dad-joke": "ai",
@@ -38,6 +49,7 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/ai/image-describe": "heavy_ai",
   "/api/ai/tts": "heavy_ai",
   "/api/ai/generate-image": "heavy_ai",
+  "/api/ai/explain-contract": "ai",
 
   // Text endpoints (simple tier)
   "/api/text/base64-encode": "simple",
@@ -49,6 +61,9 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/text/md5": "simple",
   "/api/text/sha256": "simple",
   "/api/text/sha512": "simple",
+  "/api/text/keccak256": "simple",
+  "/api/text/hash160": "simple",
+  "/api/text/hmac": "simple",
   "/api/text/hex-encode": "simple",
   "/api/text/hex-decode": "simple",
   "/api/text/jwt-decode": "simple",

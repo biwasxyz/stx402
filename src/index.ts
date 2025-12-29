@@ -19,6 +19,9 @@ import { StacksDecodeTx } from "./endpoints/stacksDecodeTx";
 import { StacksCallReadonly } from "./endpoints/stacksCallReadonly";
 import { StacksStxBalance } from "./endpoints/stacksStxBalance";
 import { StacksBlockHeight } from "./endpoints/stacksBlockHeight";
+import { StacksFtBalance } from "./endpoints/stacksFtBalance";
+import { StacksNftHoldings } from "./endpoints/stacksNftHoldings";
+import { StacksTxStatus } from "./endpoints/stacksTxStatus";
 
 // AI endpoints
 import { DadJoke } from "./endpoints/dadJoke";
@@ -28,6 +31,7 @@ import { Summarize } from "./endpoints/summarize";
 import { GenerateImage } from "./endpoints/generateImage";
 import { AiExplainContract } from "./endpoints/aiExplainContract";
 import { AiTranslate } from "./endpoints/aiTranslate";
+import { AiSentiment } from "./endpoints/aiSentiment";
 
 // Random endpoints
 import { RandomUuid } from "./endpoints/randomUuid";
@@ -41,6 +45,14 @@ import { TextSha256 } from "./endpoints/textSha256";
 import { TextSha512 } from "./endpoints/textSha512";
 import { TextKeccak256 } from "./endpoints/textKeccak256";
 import { TextHash160 } from "./endpoints/textHash160";
+import { TextUrlEncode } from "./endpoints/textUrlEncode";
+import { TextUrlDecode } from "./endpoints/textUrlDecode";
+import { TextJwtDecode } from "./endpoints/textJwtDecode";
+import { TextHmac } from "./endpoints/textHmac";
+
+// Data endpoints
+import { DataCsvToJson } from "./endpoints/dataCsvToJson";
+import { DataJsonToCsv } from "./endpoints/dataJsonToCsv";
 
 // Utility endpoints
 import { UtilTimestamp } from "./endpoints/utilTimestamp";
@@ -115,6 +127,9 @@ openapi.post("/api/stacks/decode-tx", paymentMiddleware, trackMetrics, StacksDec
 openapi.post("/api/stacks/call-readonly", paymentMiddleware, trackMetrics, StacksCallReadonly as any);
 openapi.get("/api/stacks/stx-balance/:address", paymentMiddleware, trackMetrics, StacksStxBalance as any);
 openapi.get("/api/stacks/block-height", paymentMiddleware, trackMetrics, StacksBlockHeight as any);
+openapi.get("/api/stacks/ft-balance/:address", paymentMiddleware, trackMetrics, StacksFtBalance as any);
+openapi.get("/api/stacks/nft-holdings/:address", paymentMiddleware, trackMetrics, StacksNftHoldings as any);
+openapi.get("/api/stacks/tx-status/:txid", paymentMiddleware, trackMetrics, StacksTxStatus as any);
 
 // AI endpoints (paid)
 openapi.get("/api/ai/dad-joke", paymentMiddleware, trackMetrics, DadJoke as any);
@@ -124,6 +139,7 @@ openapi.post("/api/ai/summarize", paymentMiddleware, trackMetrics, Summarize as 
 openapi.post("/api/ai/generate-image", paymentMiddleware, trackMetrics, GenerateImage as any);
 openapi.get("/api/ai/explain-contract/:contract_id", paymentMiddleware, trackMetrics, AiExplainContract as any);
 openapi.post("/api/ai/translate", paymentMiddleware, trackMetrics, AiTranslate as any);
+openapi.post("/api/ai/sentiment", paymentMiddleware, trackMetrics, AiSentiment as any);
 
 // Random endpoints (paid)
 openapi.get("/api/random/uuid", paymentMiddleware, trackMetrics, RandomUuid as any);
@@ -137,6 +153,14 @@ openapi.post("/api/text/sha256", paymentMiddleware, trackMetrics, TextSha256 as 
 openapi.post("/api/text/sha512", paymentMiddleware, trackMetrics, TextSha512 as any);
 openapi.post("/api/text/keccak256", paymentMiddleware, trackMetrics, TextKeccak256 as any);
 openapi.post("/api/text/hash160", paymentMiddleware, trackMetrics, TextHash160 as any);
+openapi.post("/api/text/url-encode", paymentMiddleware, trackMetrics, TextUrlEncode as any);
+openapi.post("/api/text/url-decode", paymentMiddleware, trackMetrics, TextUrlDecode as any);
+openapi.post("/api/text/jwt-decode", paymentMiddleware, trackMetrics, TextJwtDecode as any);
+openapi.post("/api/text/hmac", paymentMiddleware, trackMetrics, TextHmac as any);
+
+// Data endpoints (paid)
+openapi.post("/api/data/csv-to-json", paymentMiddleware, trackMetrics, DataCsvToJson as any);
+openapi.post("/api/data/json-to-csv", paymentMiddleware, trackMetrics, DataJsonToCsv as any);
 
 // Utility endpoints (paid)
 openapi.get("/api/util/timestamp", paymentMiddleware, trackMetrics, UtilTimestamp as any);
