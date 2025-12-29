@@ -1,13 +1,11 @@
+// Stacks endpoints
 import { testX402ManualFlow as testDecodeClarity } from "./decode-clarity-hex.test";
 import { testX402ManualFlow as testConvertAddress } from "./convert-address-to-network.test";
 import { testX402ManualFlow as testGetBns } from "./get-bns-address.test";
 import { testX402ManualFlow as testValidateAddress } from "./validate-stacks-address.test";
-import { testX402ManualFlow as testDadJoke } from "./dad-joke.test";
-import { testX402ManualFlow as testDeepThought } from "./deep-thought.test";
-import { testX402ManualFlow as testCoinToss } from "./coin-toss.test";
-import { testX402ManualFlow as testBetCoinToss } from "./bet-coin-toss.test";
-import { testX402ManualFlow as testBetDice } from "./bet-dice.test";
 
+// AI endpoints
+import { testX402ManualFlow as testDadJoke } from "./dad-joke.test";
 import { testX402ManualFlow as testTts } from "./tts.test";
 import { testX402ManualFlow as testSummarize } from "./summarize.test";
 import { testX402ManualFlow as testImageDescribe } from "./image-describe.test";
@@ -24,15 +22,13 @@ async function runAllTests() {
   console.log(`${COLORS.bright}🚀 Starting all X402 tests...${COLORS.reset}\n`);
 
   const tests = [
+    // Stacks endpoints
     { name: "decode-clarity-hex", fn: testDecodeClarity },
     { name: "convert-address-to-network", fn: testConvertAddress },
     { name: "get-bns-address", fn: testGetBns },
     { name: "validate-stacks-address", fn: testValidateAddress },
+    // AI endpoints
     { name: "dad-joke", fn: testDadJoke },
-    { name: "deep-thought", fn: testDeepThought },
-    { name: "coin-toss", fn: testCoinToss },
-    { name: "bet-coin-toss", fn: testBetCoinToss },
-    { name: "bet-dice", fn: testBetDice },
     { name: "tts", fn: testTts },
     { name: "summarize", fn: testSummarize },
     { name: "image-describe", fn: testImageDescribe },

@@ -3,7 +3,7 @@ import { deriveChildAccount } from "../src/utils/wallet";
 import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL, createTestLogger } from "./_shared_utils";
 
 const CLARITY_HEX = "0x0d0000000a68656c6c6f2078343032"; // StringAsciiCV "hello x402"
-const X402_ENDPOINT = `/api/decode-clarity-hex`;
+const X402_ENDPOINT = `/api/stacks/decode-clarity-hex`;
 
 interface X402PaymentRequired {
   maxAmountRequired: string;

@@ -2,8 +2,11 @@ import type { Context } from "hono";
 import { X402PaymentVerifier } from "x402-stacks";
 import { replaceBigintWithString } from "../utils/bigint";
 import {
-  getPaymentAmount,
+  getPaymentAmountForPath,
+  getEndpointTier,
+  TIER_AMOUNTS,
   type TokenType,
+  type PricingTier,
   validateTokenType,
 } from "../utils/pricing";
 
@@ -15,6 +18,7 @@ export interface X402PaymentRequired {
   nonce: string;
   expiresAt: string;
   tokenType: TokenType;
+  pricingTier: PricingTier;
 }
 
 export interface SettlePaymentResult {
@@ -37,7 +41,8 @@ export const x402PaymentMiddleware = () => {
     let minAmount: bigint;
     try {
       tokenType = validateTokenType(tokenTypeStr);
-      minAmount = getPaymentAmount(tokenType);
+      // Use path-based pricing for tiered amounts
+      minAmount = getPaymentAmountForPath(c.req.path, tokenType);
     } catch (error) {
       return c.json({ error: String(error) }, 400);
     }
@@ -55,6 +60,8 @@ export const x402PaymentMiddleware = () => {
     );
     const signedTx = c.req.header("X-PAYMENT");
 
+    const pricingTier = getEndpointTier(c.req.path);
+
     if (!signedTx) {
       // Respond 402 with payment request
       const paymentRequest: X402PaymentRequired = {
@@ -65,6 +72,7 @@ export const x402PaymentMiddleware = () => {
         nonce: crypto.randomUUID(),
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
         tokenType,
+        pricingTier,
       };
 
       return c.json(paymentRequest, 402);
@@ -89,6 +97,7 @@ export const x402PaymentMiddleware = () => {
         nonce: crypto.randomUUID(),
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         tokenType,
+        pricingTier,
       };
       return c.json(retryPaymentReq, 402);
     }
@@ -105,6 +114,7 @@ export const x402PaymentMiddleware = () => {
         nonce: crypto.randomUUID(),
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         tokenType,
+        pricingTier,
       };
       return c.json(retryPaymentReq, 402);
     }
