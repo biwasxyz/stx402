@@ -23,6 +23,13 @@
   "ai": {
     "binding": "AI"
   },
+  "kv_namespaces": [
+    {
+      "binding": "METRICS",
+      "id": "METRICS_KV_ID", // Run: wrangler kv namespace create METRICS
+      "preview_id": "METRICS_KV_PREVIEW_ID" // Run: wrangler kv namespace create METRICS --preview
+    }
+  ],
   "vars": {
     "X402_FACILITATOR_URL": "https://facilitator.x402stacks.xyz",
     "X402_NETWORK": "mainnet", // "testnet"
