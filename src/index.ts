@@ -29,6 +29,8 @@ import { TextBase64Encode } from "./endpoints/textBase64Encode";
 import { TextBase64Decode } from "./endpoints/textBase64Decode";
 import { TextSha256 } from "./endpoints/textSha256";
 import { TextSha512 } from "./endpoints/textSha512";
+import { TextKeccak256 } from "./endpoints/textKeccak256";
+import { TextHash160 } from "./endpoints/textHash160";
 
 // Utility endpoints
 import { UtilTimestamp } from "./endpoints/utilTimestamp";
@@ -100,6 +102,8 @@ openapi.post("/api/text/base64-encode", paymentMiddleware, trackMetrics, TextBas
 openapi.post("/api/text/base64-decode", paymentMiddleware, trackMetrics, TextBase64Decode as any);
 openapi.post("/api/text/sha256", paymentMiddleware, trackMetrics, TextSha256 as any);
 openapi.post("/api/text/sha512", paymentMiddleware, trackMetrics, TextSha512 as any);
+openapi.post("/api/text/keccak256", paymentMiddleware, trackMetrics, TextKeccak256 as any);
+openapi.post("/api/text/hash160", paymentMiddleware, trackMetrics, TextHash160 as any);
 
 // Utility endpoints (paid)
 openapi.get("/api/util/timestamp", paymentMiddleware, trackMetrics, UtilTimestamp as any);
