@@ -37,6 +37,18 @@ import { AiSentiment } from "./endpoints/aiSentiment";
 import { RandomUuid } from "./endpoints/randomUuid";
 import { RandomNumber } from "./endpoints/randomNumber";
 import { RandomString } from "./endpoints/randomString";
+import { RandomPassword } from "./endpoints/randomPassword";
+import { RandomColor } from "./endpoints/randomColor";
+import { RandomDice } from "./endpoints/randomDice";
+import { RandomShuffle } from "./endpoints/randomShuffle";
+
+// Math endpoints
+import { MathCalculate } from "./endpoints/mathCalculate";
+import { MathPercentage } from "./endpoints/mathPercentage";
+import { MathStatistics } from "./endpoints/mathStatistics";
+import { MathPrimeCheck } from "./endpoints/mathPrimeCheck";
+import { MathGcdLcm } from "./endpoints/mathGcdLcm";
+import { MathFactorial } from "./endpoints/mathFactorial";
 
 // Text endpoints
 import { TextBase64Encode } from "./endpoints/textBase64Encode";
@@ -155,6 +167,18 @@ openapi.post("/api/ai/sentiment", paymentMiddleware, trackMetrics, AiSentiment a
 openapi.get("/api/random/uuid", paymentMiddleware, trackMetrics, RandomUuid as any);
 openapi.get("/api/random/number", paymentMiddleware, trackMetrics, RandomNumber as any);
 openapi.get("/api/random/string", paymentMiddleware, trackMetrics, RandomString as any);
+openapi.get("/api/random/password", paymentMiddleware, trackMetrics, RandomPassword as any);
+openapi.get("/api/random/color", paymentMiddleware, trackMetrics, RandomColor as any);
+openapi.get("/api/random/dice", paymentMiddleware, trackMetrics, RandomDice as any);
+openapi.post("/api/random/shuffle", paymentMiddleware, trackMetrics, RandomShuffle as any);
+
+// Math endpoints (paid)
+openapi.post("/api/math/calculate", paymentMiddleware, trackMetrics, MathCalculate as any);
+openapi.post("/api/math/percentage", paymentMiddleware, trackMetrics, MathPercentage as any);
+openapi.post("/api/math/statistics", paymentMiddleware, trackMetrics, MathStatistics as any);
+openapi.get("/api/math/prime-check", paymentMiddleware, trackMetrics, MathPrimeCheck as any);
+openapi.post("/api/math/gcd-lcm", paymentMiddleware, trackMetrics, MathGcdLcm as any);
+openapi.get("/api/math/factorial", paymentMiddleware, trackMetrics, MathFactorial as any);
 
 // Text endpoints (paid)
 openapi.post("/api/text/base64-encode", paymentMiddleware, trackMetrics, TextBase64Encode as any);
