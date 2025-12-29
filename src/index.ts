@@ -2,6 +2,7 @@ import { fromHono } from "chanfana";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
+// Health endpoints
 import { Health } from "./endpoints/health";
 import { Dashboard } from "./endpoints/dashboard";
 
@@ -11,20 +12,26 @@ import { ValidateStacksAddress } from "./endpoints/validateStacksAddress";
 import { ConvertAddressToNetwork } from "./endpoints/convertAddressToNetwork";
 import { DecodeClarityHex } from "./endpoints/decodeClarityHex";
 
-// Games endpoints
-import { DeepThought } from "./endpoints/deepThought";
-import { CoinToss } from "./endpoints/coinToss";
-import { DadJoke } from "./endpoints/dadJoke";
-
 // AI endpoints
+import { DadJoke } from "./endpoints/dadJoke";
 import { ImageDescribe } from "./endpoints/imageDescribe";
 import { Tts } from "./endpoints/tts";
 import { Summarize } from "./endpoints/summarize";
 import { GenerateImage } from "./endpoints/generateImage";
 
-// Betting endpoints
-import { BetCoinToss } from "./endpoints/betCoinToss";
-import { BetDice } from "./endpoints/betDice";
+// Random endpoints
+import { RandomUuid } from "./endpoints/randomUuid";
+import { RandomNumber } from "./endpoints/randomNumber";
+import { RandomString } from "./endpoints/randomString";
+
+// Text endpoints
+import { TextBase64Encode } from "./endpoints/textBase64Encode";
+import { TextBase64Decode } from "./endpoints/textBase64Decode";
+import { TextSha256 } from "./endpoints/textSha256";
+import { TextSha512 } from "./endpoints/textSha512";
+
+// Utility endpoints
+import { UtilTimestamp } from "./endpoints/utilTimestamp";
 
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 import { metricsMiddleware } from "./middleware/metrics";
@@ -51,48 +58,51 @@ const trackMetrics = metricsMiddleware();
 
 // Register OpenAPI endpoints
 
-// System endpoints (free)
+// Health endpoints (free)
 openapi.get("/api/health", Health);
 openapi.get("/dashboard", Dashboard);
 
 // Stacks endpoints (paid)
-openapi.get("/api/get-bns-name/:address", paymentMiddleware, trackMetrics, GetBnsName as any);
+openapi.get("/api/stacks/get-bns-name/:address", paymentMiddleware, trackMetrics, GetBnsName as any);
 openapi.get(
-  "/api/validate-stacks-address/:address",
+  "/api/stacks/validate-address/:address",
   paymentMiddleware,
   trackMetrics,
   ValidateStacksAddress as any
 );
 openapi.get(
-  "/api/convert-address-to-network/:address",
+  "/api/stacks/convert-address/:address",
   paymentMiddleware,
   trackMetrics,
   ConvertAddressToNetwork as any
 );
 openapi.post(
-  "/api/decode-clarity-hex",
+  "/api/stacks/decode-clarity-hex",
   paymentMiddleware,
   trackMetrics,
   DecodeClarityHex as any
 );
 
-// Games endpoints (paid)
-openapi.get("/api/deep-thought", paymentMiddleware, trackMetrics, DeepThought as any);
-openapi.get("/api/coin-toss", paymentMiddleware, trackMetrics, CoinToss as any);
-openapi.get("/api/dad-joke", paymentMiddleware, trackMetrics, DadJoke as any);
-
 // AI endpoints (paid)
+openapi.get("/api/ai/dad-joke", paymentMiddleware, trackMetrics, DadJoke as any);
 openapi.post("/api/ai/image-describe", paymentMiddleware, trackMetrics, ImageDescribe as any);
 openapi.post("/api/ai/tts", paymentMiddleware, trackMetrics, Tts as any);
 openapi.post("/api/ai/summarize", paymentMiddleware, trackMetrics, Summarize as any);
-openapi.post("/api/generate-image", paymentMiddleware, trackMetrics, GenerateImage as any);
+openapi.post("/api/ai/generate-image", paymentMiddleware, trackMetrics, GenerateImage as any);
 
-// Betting endpoints (paid)
-openapi.post("/api/bet/coin-toss", paymentMiddleware, trackMetrics, BetCoinToss as any);
-openapi.post("/api/bet/dice", paymentMiddleware, trackMetrics, BetDice as any);
+// Random endpoints (paid)
+openapi.get("/api/random/uuid", paymentMiddleware, trackMetrics, RandomUuid as any);
+openapi.get("/api/random/number", paymentMiddleware, trackMetrics, RandomNumber as any);
+openapi.get("/api/random/string", paymentMiddleware, trackMetrics, RandomString as any);
 
-// You may also register routes for non OpenAPI directly on Hono
-// app.get('/test', (c) => c.text('Hono!'))
+// Text endpoints (paid)
+openapi.post("/api/text/base64-encode", paymentMiddleware, trackMetrics, TextBase64Encode as any);
+openapi.post("/api/text/base64-decode", paymentMiddleware, trackMetrics, TextBase64Decode as any);
+openapi.post("/api/text/sha256", paymentMiddleware, trackMetrics, TextSha256 as any);
+openapi.post("/api/text/sha512", paymentMiddleware, trackMetrics, TextSha512 as any);
+
+// Utility endpoints (paid)
+openapi.get("/api/util/timestamp", paymentMiddleware, trackMetrics, UtilTimestamp as any);
 
 // Export the Hono app
 export default app;

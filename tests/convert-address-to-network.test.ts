@@ -3,7 +3,7 @@ import { deriveChildAccount } from "../src/utils/wallet";
 import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL, createTestLogger } from "./_shared_utils";
 
 const X402_TEST_ADDRESS = "SPKH205E1MZMBRSQ07PCZN3A1RJCGSHY5P9CM1DR"; // Mainnet address for conversion test
-const X402_ENDPOINT = `/api/convert-address-to-network/${X402_TEST_ADDRESS}`;
+const X402_ENDPOINT = `/api/stacks/convert-address/${X402_TEST_ADDRESS}`;
 
 interface X402PaymentRequired {
   maxAmountRequired: string;

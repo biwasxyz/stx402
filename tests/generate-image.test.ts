@@ -2,7 +2,7 @@ import { TokenType, X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import { TEST_TOKENS, X402_CLIENT_PK, X402_NETWORK, X402_WORKER_URL, createTestLogger } from "./_shared_utils";
 
-const X402_ENDPOINT = `/api/generate-image`;
+const X402_ENDPOINT = `/api/ai/generate-image`;
 
 interface X402PaymentRequired {
   maxAmountRequired: string;

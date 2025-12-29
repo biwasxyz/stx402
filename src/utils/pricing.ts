@@ -26,25 +26,18 @@ export const TIER_AMOUNTS: Record<PricingTier, Record<TokenType, string>> = {
 
 // Endpoint path to pricing tier mapping
 export const ENDPOINT_TIERS: Record<string, PricingTier> = {
-  // Existing endpoints - categorized by tier
-  // Simple tier (0.001 STX)
-  "/api/get-bns-name": "simple",
-  "/api/validate-stacks-address": "simple",
-  "/api/convert-address-to-network": "simple",
-  "/api/decode-clarity-hex": "simple",
-  "/api/deep-thought": "simple",
-  "/api/coin-toss": "simple",
-  "/api/dad-joke": "simple",
-  "/api/bet/coin-toss": "simple",
-  "/api/bet/dice": "simple",
+  // Stacks endpoints (simple tier)
+  "/api/stacks/get-bns-name": "simple",
+  "/api/stacks/validate-address": "simple",
+  "/api/stacks/convert-address": "simple",
+  "/api/stacks/decode-clarity-hex": "simple",
 
-  // AI tier (0.003 STX)
+  // AI endpoints
+  "/api/ai/dad-joke": "ai",
   "/api/ai/summarize": "ai",
-
-  // Heavy AI tier (0.01 STX)
   "/api/ai/image-describe": "heavy_ai",
   "/api/ai/tts": "heavy_ai",
-  "/api/generate-image": "heavy_ai",
+  "/api/ai/generate-image": "heavy_ai",
 
   // Text endpoints (simple tier)
   "/api/text/base64-encode": "simple",
