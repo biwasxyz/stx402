@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-STX402 is a Cloudflare Workers API providing **100 useful endpoints** via X402 micropayments. Currently at 26 endpoints, scaling to 100+.
+STX402 is a Cloudflare Workers API providing **100 useful endpoints** via X402 micropayments.
 
 **Vision**: A marketplace of useful API endpoints where the best ones surface to the top based on usage and earnings. Each endpoint is simple, composable, and pays for itself through micropayments.
 
@@ -31,16 +31,19 @@ bun run tests/get-bns-address.test.ts
 
 ## Architecture
 
-### Endpoint Categories
+### Endpoint Categories (100 total)
 
-| Category | Count | Path Pattern | Description |
-|----------|-------|--------------|-------------|
-| Health | 2 | `/api/health`, `/dashboard` | Free monitoring endpoints |
-| Stacks | 8 | `/api/stacks/*` | Blockchain queries, Clarity utilities |
-| AI | 6 | `/api/ai/*` | AI-powered analysis and generation |
-| Random | 3 | `/api/random/*` | Cryptographically secure generation |
-| Text | 6 | `/api/text/*` | Encoding, hashing, transformation |
-| Utility | 1 | `/api/util/*` | General utilities |
+| Category | Count | Path Pattern | Tier | Description |
+|----------|-------|--------------|------|-------------|
+| Health | 2 | `/api/health`, `/dashboard` | free | Monitoring endpoints |
+| Stacks | 15 | `/api/stacks/*` | simple | Blockchain queries, Clarity utilities |
+| AI | 13 | `/api/ai/*` | ai/heavy_ai | AI-powered analysis and generation |
+| Text | 25 | `/api/text/*` | simple | Encoding, hashing, transformation |
+| Data | 8 | `/api/data/*` | simple | JSON/CSV processing |
+| Crypto | 2 | `/api/crypto/*` | simple | Cryptographic operations |
+| Random | 7 | `/api/random/*` | simple | Secure random generation |
+| Math | 6 | `/api/math/*` | simple | Mathematical operations |
+| Utility | 22 | `/api/util/*` | simple | General utilities |
 
 ### Pricing Tiers
 
@@ -86,7 +89,7 @@ export class MyEndpoint extends BaseEndpoint {
    import { NewEndpoint } from "./endpoints/NewEndpoint";
    openapi.post("/api/category/endpoint", paymentMiddleware, trackMetrics, NewEndpoint as any);
    ```
-3. Add to `ENDPOINT_TIERS` in `src/utils/pricing.ts` if non-default tier
+3. Add to `ENDPOINT_TIERS` in `src/utils/pricing.ts`
 4. Run `npm run cf-typegen` if using new env bindings
 
 ### Key Files
@@ -95,8 +98,12 @@ export class MyEndpoint extends BaseEndpoint {
 - `src/endpoints/BaseEndpoint.ts` - Shared methods: `getTokenType()`, `validateAddress()`, `errorResponse()`
 - `src/endpoints/stacks*.ts` - Stacks/Clarity endpoints (BNS, contracts, consensus buffers)
 - `src/endpoints/ai*.ts` - AI endpoints (summarize, TTS, image generation, contract analysis)
-- `src/endpoints/text*.ts` - Hashing (SHA, Keccak, Hash160), encoding (base64)
-- `src/endpoints/random*.ts` - Secure random (UUID, numbers, strings)
+- `src/endpoints/text*.ts` - Hashing (SHA, Keccak, Hash160), encoding (base64, URL, hex)
+- `src/endpoints/data*.ts` - JSON/CSV transformation and validation
+- `src/endpoints/crypto*.ts` - RIPEMD-160, random bytes
+- `src/endpoints/random*.ts` - Secure random (UUID, numbers, strings, passwords)
+- `src/endpoints/math*.ts` - Calculate, statistics, prime check, factorial
+- `src/endpoints/util*.ts` - Timestamps, DNS, QR codes, URL parsing, etc.
 
 **Middleware:**
 - `src/middleware/x402-stacks.ts` - X402 payment verification/settlement
@@ -136,37 +143,7 @@ KV Namespaces:
 AI Bindings:
 - `AI` - Cloudflare Workers AI
 
-## Roadmap to 100 Endpoints
-
-### Next Priority Endpoints
-
-**Text utilities (simple tier):**
-- url-encode/decode, html-encode/decode
-- jwt-decode, regex-test, regex-extract
-- markdown-to-html, slugify, word-count
-
-**Data transformation (simple tier):**
-- json-format, json-minify, json-validate
-- csv-to-json, json-to-csv
-- yaml-to-json, xml-to-json
-
-**More random (simple tier):**
-- password (with requirements)
-- color (hex/rgb/hsl)
-- dice, shuffle
-
-**Utilities (simple tier):**
-- timestamp-convert, date-diff
-- dns-lookup, ip-info
-- qr-generate, url-parse
-
-**More AI (ai/heavy_ai tier):**
-- sentiment analysis
-- language detection
-- translate
-- code-explain
-
-### Design Principles
+## Design Principles
 
 1. **One thing well** - Each endpoint has a single, clear purpose
 2. **Composable** - Output from one endpoint can feed into another

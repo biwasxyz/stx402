@@ -2,8 +2,6 @@
 
 Cloudflare Worker API providing **100 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
 
-**Current: 26 endpoints | Target: 100 endpoints**
-
 ## Payment
 
 All paid endpoints require X402 micropayments. Supports `?tokenType=STX|sBTC|USDCx` (case-insensitive).
@@ -18,14 +16,14 @@ All paid endpoints require X402 micropayments. Supports `?tokenType=STX|sBTC|USD
 
 OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 
-### Health (Free)
+### Health (2 free)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Health check |
 | `GET` | `/dashboard` | Metrics dashboard |
 
-### Stacks (8 endpoints)
+### Stacks (15 endpoints)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -35,66 +33,133 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `POST` | `/api/stacks/decode-clarity-hex` | Decode ClarityValue from hex |
 | `GET` | `/api/stacks/contract-source/:contract_id` | Contract source + SHA512/256 hash |
 | `GET` | `/api/stacks/contract-abi/:contract_id` | Contract ABI/interface |
-| `POST` | `/api/stacks/to-consensus-buff` | Serialize Clarity value (matches `to-consensus-buff?`) |
-| `POST` | `/api/stacks/from-consensus-buff` | Deserialize buffer (matches `from-consensus-buff?`) |
+| `POST` | `/api/stacks/to-consensus-buff` | Serialize Clarity value |
+| `POST` | `/api/stacks/from-consensus-buff` | Deserialize consensus buffer |
+| `POST` | `/api/stacks/decode-tx` | Decode raw transaction |
+| `POST` | `/api/stacks/call-readonly` | Call read-only contract function |
+| `GET` | `/api/stacks/stx-balance/:address` | STX balance lookup |
+| `GET` | `/api/stacks/block-height` | Current block height |
+| `GET` | `/api/stacks/ft-balance/:address` | Fungible token balances |
+| `GET` | `/api/stacks/nft-holdings/:address` | NFT holdings |
+| `GET` | `/api/stacks/tx-status/:txid` | Transaction status |
 
-### AI (6 endpoints)
+### AI (13 endpoints)
+
+| Method | Path | Tier | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/ai/dad-joke` | ai | AI-generated dad joke |
+| `POST` | `/api/ai/summarize` | ai | Text summarization |
+| `POST` | `/api/ai/image-describe` | heavy_ai | Image analysis/description |
+| `POST` | `/api/ai/tts` | heavy_ai | Text-to-speech |
+| `POST` | `/api/ai/generate-image` | heavy_ai | AI image generation (Flux) |
+| `GET` | `/api/ai/explain-contract/:contract_id` | ai | AI contract analysis |
+| `POST` | `/api/ai/translate` | ai | Text translation |
+| `POST` | `/api/ai/sentiment` | ai | Sentiment analysis |
+| `POST` | `/api/ai/keywords` | ai | Keyword extraction |
+| `POST` | `/api/ai/language-detect` | ai | Language detection |
+| `POST` | `/api/ai/paraphrase` | ai | Text paraphrasing |
+| `POST` | `/api/ai/grammar-check` | ai | Grammar checking |
+| `POST` | `/api/ai/question-answer` | ai | Question answering |
+
+### Text (25 endpoints)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/ai/dad-joke` | AI-generated dad joke |
-| `POST` | `/api/ai/summarize` | Text summarization |
-| `POST` | `/api/ai/image-describe` | Image analysis/description |
-| `POST` | `/api/ai/tts` | Text-to-speech |
-| `POST` | `/api/ai/generate-image` | AI image generation (Flux) |
-| `GET` | `/api/ai/explain-contract/:contract_id` | AI contract analysis |
-
-### Random (3 endpoints)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/random/uuid` | Cryptographically secure UUID v4 |
-| `GET` | `/api/random/number` | Secure random number (min/max/count) |
-| `GET` | `/api/random/string` | Secure random string (charset options) |
-
-### Text (6 endpoints)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/text/base64-encode` | UTF-8 safe base64 encode (urlSafe option) |
+| `POST` | `/api/text/base64-encode` | UTF-8 safe base64 encode |
 | `POST` | `/api/text/base64-decode` | UTF-8 safe base64 decode |
-| `POST` | `/api/text/sha256` | SHA-256 hash (SubtleCrypto) |
-| `POST` | `/api/text/sha512` | SHA-512 hash (SubtleCrypto) |
-| `POST` | `/api/text/keccak256` | Keccak-256 hash (Ethereum/Clarity) |
-| `POST` | `/api/text/hash160` | RIPEMD160(SHA256(x)) (Bitcoin/Clarity) |
+| `POST` | `/api/text/sha256` | SHA-256 hash |
+| `POST` | `/api/text/sha512` | SHA-512 hash |
+| `POST` | `/api/text/keccak256` | Keccak-256 hash |
+| `POST` | `/api/text/hash160` | RIPEMD160(SHA256(x)) |
+| `POST` | `/api/text/url-encode` | URL encode |
+| `POST` | `/api/text/url-decode` | URL decode |
+| `POST` | `/api/text/jwt-decode` | Decode JWT token |
+| `POST` | `/api/text/hmac` | HMAC signature |
+| `POST` | `/api/text/html-encode` | HTML entity encode |
+| `POST` | `/api/text/html-decode` | HTML entity decode |
+| `POST` | `/api/text/hex-encode` | Hex encode |
+| `POST` | `/api/text/hex-decode` | Hex decode |
+| `POST` | `/api/text/case-convert` | Case conversion |
+| `POST` | `/api/text/slug` | URL slug generation |
+| `POST` | `/api/text/word-count` | Word/char statistics |
+| `POST` | `/api/text/reverse` | Reverse text |
+| `POST` | `/api/text/truncate` | Smart truncation |
+| `POST` | `/api/text/regex-test` | Regex pattern testing |
+| `POST` | `/api/text/rot13` | ROT13 cipher |
+| `GET` | `/api/text/lorem-ipsum` | Lorem ipsum generator |
+| `GET` | `/api/text/validate-url` | URL validation |
+| `POST` | `/api/text/diff` | Text comparison |
+| `GET` | `/api/text/unicode-info` | Unicode character info |
 
-### Utility (1 endpoint)
+### Data (8 endpoints)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/util/timestamp` | Current timestamp (unix, iso, utc) |
+| `POST` | `/api/data/csv-to-json` | CSV to JSON |
+| `POST` | `/api/data/json-to-csv` | JSON to CSV |
+| `POST` | `/api/data/json-format` | Pretty print JSON |
+| `POST` | `/api/data/json-minify` | Minify JSON |
+| `POST` | `/api/data/json-validate` | Validate JSON |
+| `POST` | `/api/data/json-path` | JSONPath queries |
+| `POST` | `/api/data/json-flatten` | Flatten nested JSON |
+| `POST` | `/api/data/json-merge` | Deep merge objects |
 
-## Roadmap to 100 Endpoints
+### Crypto (2 endpoints)
 
-### Planned Categories
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/crypto/ripemd160` | RIPEMD-160 hash |
+| `GET` | `/api/crypto/random-bytes` | Secure random bytes |
 
-| Category | Planned | Examples |
-|----------|---------|----------|
-| Text | +15 | url-encode, jwt-decode, regex-test, markdown-to-html |
-| Data | +10 | json-format, csv-to-json, xml-to-json, yaml-to-json |
-| Random | +5 | password, color, dice, shuffle |
-| Utility | +15 | dns-lookup, ip-info, qr-generate, cron-parse |
-| Math | +10 | calculate, unit-convert, statistics, prime-check |
-| Crypto | +10 | btc-validate, stx-balance, verify-message |
-| AI | +10 | sentiment, translate, code-explain, image-ocr |
+### Random (7 endpoints)
 
-### Design Principles
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/random/uuid` | UUID v4 |
+| `GET` | `/api/random/number` | Random number |
+| `GET` | `/api/random/string` | Random string |
+| `GET` | `/api/random/password` | Secure password |
+| `GET` | `/api/random/color` | Random color |
+| `GET` | `/api/random/dice` | Dice roll |
+| `POST` | `/api/random/shuffle` | Array shuffle |
 
-1. **Simple over complex** - Each endpoint does one thing well
-2. **Composable outputs** - Results can chain into other endpoints
-3. **Zero external deps where possible** - Use SubtleCrypto, @noble/hashes
-4. **Cacheable when immutable** - Contract source/ABI cached indefinitely
-5. **Usage-driven surfacing** - Best endpoints rise to top via metrics
+### Math (6 endpoints)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/math/calculate` | Expression calculator |
+| `POST` | `/api/math/percentage` | Percentage operations |
+| `POST` | `/api/math/statistics` | Statistical analysis |
+| `GET` | `/api/math/prime-check` | Prime number check |
+| `POST` | `/api/math/gcd-lcm` | GCD/LCM calculation |
+| `GET` | `/api/math/factorial` | Factorial |
+
+### Utility (22 endpoints)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/util/timestamp` | Current timestamp |
+| `GET` | `/api/util/dns-lookup` | DNS lookup |
+| `GET` | `/api/util/ip-info` | IP geolocation |
+| `POST` | `/api/util/qr-generate` | QR code generation |
+| `GET` | `/api/util/timestamp-convert` | Timestamp conversion |
+| `GET` | `/api/util/date-diff` | Date difference |
+| `POST` | `/api/util/date-add` | Date arithmetic |
+| `GET` | `/api/util/cron-parse` | Cron expression parser |
+| `GET` | `/api/util/user-agent-parse` | User agent parser |
+| `GET` | `/api/util/url-parse` | URL parser |
+| `GET` | `/api/util/color-convert` | Color format conversion |
+| `POST` | `/api/util/markdown-to-html` | Markdown to HTML |
+| `GET` | `/api/util/http-status` | HTTP status lookup |
+| `GET` | `/api/util/validate-email` | Email validation |
+| `POST` | `/api/util/url-build` | URL builder |
+| `POST` | `/api/util/html-to-text` | HTML to plain text |
+| `GET` | `/api/util/base64-image` | Placeholder image |
+| `GET` | `/api/util/bytes-format` | Bytes formatter |
+| `POST` | `/api/util/slugify` | Advanced slugify |
+| `GET` | `/api/util/mime-type` | MIME type lookup |
+| `POST` | `/api/util/regex-escape` | Regex escape |
+| `POST` | `/api/util/string-distance` | String similarity |
 
 ## Project Structure
 
@@ -104,6 +169,9 @@ src/
 │   ├── BaseEndpoint.ts # Shared methods
 │   ├── stacks*.ts      # Stacks/Clarity endpoints
 │   ├── ai*.ts          # AI-powered endpoints
+│   ├── crypto*.ts      # Cryptographic endpoints
+│   ├── data*.ts        # Data transformation
+│   ├── math*.ts        # Math operations
 │   ├── random*.ts      # Random generation
 │   ├── text*.ts        # Text/encoding utilities
 │   └── util*.ts        # General utilities
