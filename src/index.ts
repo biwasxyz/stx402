@@ -81,6 +81,16 @@ import { UtilTimestamp } from "./endpoints/utilTimestamp";
 import { UtilDnsLookup } from "./endpoints/utilDnsLookup";
 import { UtilIpInfo } from "./endpoints/utilIpInfo";
 import { UtilQrGenerate } from "./endpoints/utilQrGenerate";
+import { UtilTimestampConvert } from "./endpoints/utilTimestampConvert";
+import { UtilDateDiff } from "./endpoints/utilDateDiff";
+import { UtilDateAdd } from "./endpoints/utilDateAdd";
+import { UtilCronParse } from "./endpoints/utilCronParse";
+import { UtilUserAgentParse } from "./endpoints/utilUserAgentParse";
+import { UtilUrlParse } from "./endpoints/utilUrlParse";
+import { UtilColorConvert } from "./endpoints/utilColorConvert";
+import { UtilMarkdownToHtml } from "./endpoints/utilMarkdownToHtml";
+import { UtilHttpStatus } from "./endpoints/utilHttpStatus";
+import { UtilValidateEmail } from "./endpoints/utilValidateEmail";
 
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 import { metricsMiddleware } from "./middleware/metrics";
@@ -211,6 +221,16 @@ openapi.get("/api/util/timestamp", paymentMiddleware, trackMetrics, UtilTimestam
 openapi.get("/api/util/dns-lookup", paymentMiddleware, trackMetrics, UtilDnsLookup as any);
 openapi.get("/api/util/ip-info", paymentMiddleware, trackMetrics, UtilIpInfo as any);
 openapi.post("/api/util/qr-generate", paymentMiddleware, trackMetrics, UtilQrGenerate as any);
+openapi.get("/api/util/timestamp-convert", paymentMiddleware, trackMetrics, UtilTimestampConvert as any);
+openapi.get("/api/util/date-diff", paymentMiddleware, trackMetrics, UtilDateDiff as any);
+openapi.post("/api/util/date-add", paymentMiddleware, trackMetrics, UtilDateAdd as any);
+openapi.get("/api/util/cron-parse", paymentMiddleware, trackMetrics, UtilCronParse as any);
+openapi.get("/api/util/user-agent-parse", paymentMiddleware, trackMetrics, UtilUserAgentParse as any);
+openapi.get("/api/util/url-parse", paymentMiddleware, trackMetrics, UtilUrlParse as any);
+openapi.get("/api/util/color-convert", paymentMiddleware, trackMetrics, UtilColorConvert as any);
+openapi.post("/api/util/markdown-to-html", paymentMiddleware, trackMetrics, UtilMarkdownToHtml as any);
+openapi.get("/api/util/http-status", paymentMiddleware, trackMetrics, UtilHttpStatus as any);
+openapi.get("/api/util/validate-email", paymentMiddleware, trackMetrics, UtilValidateEmail as any);
 
 // Export the Hono app
 export default app;
