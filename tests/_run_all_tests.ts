@@ -11,6 +11,8 @@
  *   bun run tests/_run_all_tests.ts --filter=sha256    # Filter by name
  *   bun run tests/_run_all_tests.ts --delay=1000       # 1s delay between tests
  *   bun run tests/_run_all_tests.ts --retries=3        # 3 retries for rate limits
+ *   bun run tests/_run_all_tests.ts --reverse          # Run tests in reverse order
+ *   bun run tests/_run_all_tests.ts --random           # Run tests in random order
  *
  * Environment:
  *   X402_CLIENT_PK      - Testnet mnemonic for payments (required)
@@ -53,6 +55,12 @@ interface PaymentErrorResponse {
   retryAfter?: number;
   tokenType: TokenType;
   resource: string;
+  details?: {
+    settleError?: string;
+    settleReason?: string;
+    settleStatus?: string;
+    exceptionMessage?: string;
+  };
 }
 
 function isPaymentErrorResponse(obj: unknown): obj is PaymentErrorResponse {
@@ -66,7 +74,13 @@ function isPaymentErrorResponse(obj: unknown): obj is PaymentErrorResponse {
   );
 }
 
-function formatErrorResponse(status: number, body: string, retryAfter: string | null): string {
+interface ParsedErrorResponse {
+  message: string;
+  details?: PaymentErrorResponse["details"];
+  raw?: string;
+}
+
+function formatErrorResponse(status: number, body: string, retryAfter: string | null): ParsedErrorResponse {
   // Try to parse as structured error
   try {
     const parsed = JSON.parse(body);
@@ -75,16 +89,20 @@ function formatErrorResponse(status: number, body: string, retryAfter: string | 
       if (parsed.retryAfter || retryAfter) {
         msg += ` (retry after ${parsed.retryAfter || retryAfter}s)`;
       }
-      return msg;
+      return {
+        message: msg,
+        details: parsed.details,
+        raw: body,
+      };
     }
     // Legacy error format with just 'error' field
     if (parsed.error) {
-      return parsed.error.slice(0, 80);
+      return { message: parsed.error.slice(0, 80), raw: body };
     }
   } catch {
     // Not JSON, return truncated text
   }
-  return body.slice(0, 80);
+  return { message: body.slice(0, 80), raw: body };
 }
 
 // =============================================================================
@@ -99,6 +117,7 @@ interface RunConfig {
   verbose: boolean;
   delayMs: number;        // Delay between tests (ms)
   maxRetries: number;     // Max retries for rate-limited requests
+  order: "default" | "reverse" | "random";  // Test execution order
 }
 
 function parseArgs(): RunConfig {
@@ -111,6 +130,7 @@ function parseArgs(): RunConfig {
     verbose: process.env.VERBOSE === "1",
     delayMs: parseInt(process.env.TEST_DELAY_MS || "500", 10),  // Default 500ms between tests
     maxRetries: parseInt(process.env.TEST_MAX_RETRIES || "2", 10),  // Default 2 retries for rate limits
+    order: "default",
   };
 
   for (const arg of args) {
@@ -133,6 +153,10 @@ function parseArgs(): RunConfig {
       config.maxRetries = parseInt(arg.split("=")[1], 10);
     } else if (arg === "--verbose" || arg === "-v") {
       config.verbose = true;
+    } else if (arg === "--reverse") {
+      config.order = "reverse";
+    } else if (arg === "--random") {
+      config.order = "random";
     }
   }
 
@@ -144,6 +168,16 @@ function parseArgs(): RunConfig {
 // =============================================================================
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Fisher-Yates shuffle for random order
+function shuffle<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 // Check if error is retryable (rate limit or transient)
 function isRetryableError(status: number, errorCode?: string): boolean {
@@ -259,8 +293,16 @@ async function testEndpointWithToken(
       }
 
       // Not retryable or out of retries
-      const formattedError = formatErrorResponse(retryRes.status, errText, retryAfterHeader);
-      lastError = `(${retryRes.status}) ${formattedError}`;
+      const parsedError = formatErrorResponse(retryRes.status, errText, retryAfterHeader);
+      lastError = `(${retryRes.status}) ${parsedError.message}`;
+
+      // Log detailed error info in verbose mode
+      if (parsedError.details) {
+        logger.debug("Error details:", parsedError.details);
+      }
+      if (parsedError.raw && parsedError.raw !== parsedError.message) {
+        logger.debug("Raw response:", parsedError.raw);
+      }
       break;
     }
 
@@ -314,18 +356,24 @@ interface RunStats {
 
 async function runTests(runConfig: RunConfig): Promise<RunStats> {
   if (!X402_CLIENT_PK) {
-    throw new Error("Set X402_CLIENT_PK env var with testnet mnemonic");
+    throw new Error("Set X402_CLIENT_PK env var with mnemonic");
   }
+
+  // Validate network
+  if (X402_NETWORK !== "mainnet" && X402_NETWORK !== "testnet") {
+    throw new Error(`Invalid X402_NETWORK: "${X402_NETWORK}". Must be "mainnet" or "testnet".`);
+  }
+  const network: NetworkType = X402_NETWORK;
 
   // Initialize wallet
   const { address, key } = await deriveChildAccount(
-    X402_NETWORK as NetworkType,
+    network,
     X402_CLIENT_PK,
     0
   );
 
   const x402Client = new X402PaymentClient({
-    network: X402_NETWORK as NetworkType,
+    network,
     privateKey: key,
   });
 
@@ -338,6 +386,13 @@ async function runTests(runConfig: RunConfig): Promise<RunStats> {
     endpoints = endpoints.filter((e) =>
       e.name.toLowerCase().includes(runConfig.filter!)
     );
+  }
+
+  // Apply test ordering
+  if (runConfig.order === "reverse") {
+    endpoints = [...endpoints].reverse();
+  } else if (runConfig.order === "random") {
+    endpoints = shuffle(endpoints);
   }
 
   // Initialize stats
@@ -359,10 +414,12 @@ async function runTests(runConfig: RunConfig): Promise<RunStats> {
   console.log(`${COLORS.bright}  X402 ENDPOINT TEST RUNNER${COLORS.reset}`);
   console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
   console.log(`  Wallet:     ${address}`);
+  console.log(`  Network:    ${network}`);
   console.log(`  Server:     ${X402_WORKER_URL}`);
   console.log(`  Endpoints:  ${endpoints.length}`);
   console.log(`  Tokens:     ${runConfig.tokens.join(", ")}`);
   console.log(`  Total runs: ${endpoints.length * runConfig.tokens.length}`);
+  console.log(`  Order:      ${runConfig.order}`);
   console.log(`  Delay:      ${runConfig.delayMs}ms between tests`);
   console.log(`  Retries:    ${runConfig.maxRetries} for rate-limited requests`);
   console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}\n`);

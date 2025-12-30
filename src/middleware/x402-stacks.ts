@@ -47,6 +47,12 @@ export interface PaymentErrorResponse {
   retryAfter?: number;  // seconds until retry is recommended
   tokenType: TokenType;
   resource: string;
+  details?: {           // Raw error details for debugging
+    settleError?: string;
+    settleReason?: string;
+    settleStatus?: string;
+    exceptionMessage?: string;
+  };
 }
 
 // Helper to classify errors from facilitator
@@ -232,6 +238,9 @@ export const x402PaymentMiddleware = () => {
         retryAfter: classified.retryAfter,
         tokenType,
         resource: c.req.path,
+        details: {
+          exceptionMessage: String(error),
+        },
       };
 
       // Set Retry-After header for transient errors
@@ -257,6 +266,11 @@ export const x402PaymentMiddleware = () => {
         retryAfter: classified.retryAfter,
         tokenType,
         resource: c.req.path,
+        details: {
+          settleError: settleResult.error,
+          settleReason: settleResult.reason,
+          settleStatus: settleResult.status,
+        },
       };
 
       // Set Retry-After header for transient errors
