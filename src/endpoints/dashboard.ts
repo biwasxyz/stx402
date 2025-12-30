@@ -251,7 +251,19 @@ function generateDashboardHTML(data: {
       border-bottom: 1px solid #27272a;
       position: sticky;
       top: 0;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
     }
+    th:hover { color: #a1a1aa; }
+    th .sort-icon {
+      display: inline-block;
+      margin-left: 4px;
+      opacity: 0.3;
+      transition: opacity 0.15s;
+    }
+    th.sorted .sort-icon { opacity: 1; }
+    th.sorted { color: #f7931a; }
     td {
       padding: 12px 16px;
       border-bottom: 1px solid #27272a;
@@ -358,15 +370,15 @@ function generateDashboardHTML(data: {
         <table>
           <thead>
             <tr>
-              <th>Endpoint</th>
-              <th>Tier</th>
-              <th>Calls</th>
-              <th>Success Rate</th>
-              <th>Avg Latency</th>
-              <th>STX</th>
-              <th>sBTC</th>
-              <th>USDCx</th>
-              <th>Last Call</th>
+              <th data-sort="path">Endpoint <span class="sort-icon">↕</span></th>
+              <th data-sort="tier">Tier <span class="sort-icon">↕</span></th>
+              <th data-sort="calls" class="sorted">Calls <span class="sort-icon">↓</span></th>
+              <th data-sort="success">Success Rate <span class="sort-icon">↕</span></th>
+              <th data-sort="latency">Avg Latency <span class="sort-icon">↕</span></th>
+              <th data-sort="stx">STX <span class="sort-icon">↕</span></th>
+              <th data-sort="sbtc">sBTC <span class="sort-icon">↕</span></th>
+              <th data-sort="usdcx">USDCx <span class="sort-icon">↕</span></th>
+              <th data-sort="lastcall">Last Call <span class="sort-icon">↕</span></th>
             </tr>
           </thead>
           <tbody>
@@ -379,12 +391,14 @@ function generateDashboardHTML(data: {
                   : parseFloat(m.successRate) >= 80
                   ? "success-med"
                   : "success-low";
+              const lastCallTs = m.lastCall === "Never" ? 0 : new Date(m.lastCall).getTime();
               const lastCallDisplay =
                 m.lastCall === "Never"
                   ? "-"
                   : new Date(m.lastCall).toLocaleString();
+              const successNum = m.successRate === "N/A" ? -1 : parseFloat(m.successRate);
               return `
-                <tr>
+                <tr data-path="${m.path}" data-tier="${m.tier}" data-calls="${m.totalCalls}" data-success="${successNum}" data-latency="${m.avgLatencyMs}" data-stx="${m.earnings.STX}" data-sbtc="${m.earnings.sBTC}" data-usdcx="${m.earnings.USDCx}" data-lastcall="${lastCallTs}">
                   <td><code>${m.path}</code></td>
                   <td class="tier-${m.tier}">${m.tier}</td>
                   <td>${m.totalCalls.toLocaleString()}</td>
@@ -408,6 +422,60 @@ function generateDashboardHTML(data: {
       Built on <a href="https://stacks.co" target="_blank">Stacks</a></p>
     </div>
   </div>
+  <script>
+    (function() {
+      let currentSort = { key: 'calls', dir: 'desc' };
+      const tbody = document.querySelector('table tbody');
+      const headers = document.querySelectorAll('th[data-sort]');
+
+      function sortTable(key) {
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const isNumeric = ['calls', 'success', 'latency', 'stx', 'sbtc', 'usdcx', 'lastcall'].includes(key);
+
+        // Toggle direction if same column
+        if (currentSort.key === key) {
+          currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSort.key = key;
+          currentSort.dir = isNumeric ? 'desc' : 'asc';
+        }
+
+        rows.sort((a, b) => {
+          let aVal = a.dataset[key];
+          let bVal = b.dataset[key];
+
+          if (isNumeric) {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+            return currentSort.dir === 'asc' ? aVal - bVal : bVal - aVal;
+          } else {
+            return currentSort.dir === 'asc'
+              ? aVal.localeCompare(bVal)
+              : bVal.localeCompare(aVal);
+          }
+        });
+
+        // Re-append sorted rows
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Update header styles
+        headers.forEach(th => {
+          const icon = th.querySelector('.sort-icon');
+          if (th.dataset.sort === key) {
+            th.classList.add('sorted');
+            icon.textContent = currentSort.dir === 'asc' ? '↑' : '↓';
+          } else {
+            th.classList.remove('sorted');
+            icon.textContent = '↕';
+          }
+        });
+      }
+
+      headers.forEach(th => {
+        th.addEventListener('click', () => sortTable(th.dataset.sort));
+      });
+    })();
+  </script>
 </body>
 </html>`;
 }
