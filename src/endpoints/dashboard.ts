@@ -478,23 +478,23 @@ function generateDashboardHTML(data: {
       </div>
     </div>
 
-    <div class="charts-row">
-      <div class="chart-container">
-        <h2 class="section-title">Last 7 Days</h2>
-        <div class="bar-chart">
-          ${dailyStats.map((day) => {
-            const heightPx = Math.max((day.calls / maxDailyCalls) * 100, 4);
-            return `
-              <div class="bar-day">
-                <div class="bar-value">${day.calls.toLocaleString()}</div>
-                <div class="bar" style="height: ${heightPx}px"></div>
-                <div class="bar-label">${day.date.slice(5)}</div>
-              </div>
-            `;
-          }).join("")}
-        </div>
+    <div class="chart-container" style="margin-bottom: 32px;">
+      <h2 class="section-title">Last 7 Days</h2>
+      <div class="bar-chart">
+        ${dailyStats.map((day) => {
+          const heightPx = Math.max((day.calls / maxDailyCalls) * 100, 4);
+          return `
+            <div class="bar-day">
+              <div class="bar-value">${day.calls.toLocaleString()}</div>
+              <div class="bar" style="height: ${heightPx}px"></div>
+              <div class="bar-label">${day.date.slice(5)}</div>
+            </div>
+          `;
+        }).join("")}
       </div>
+    </div>
 
+    <div class="charts-row">
       <div class="chart-container">
         <h2 class="section-title">Calls by Category</h2>
         <div class="horiz-bar-chart">
@@ -515,9 +515,7 @@ function generateDashboardHTML(data: {
           }).join("")}
         </div>
       </div>
-    </div>
 
-    <div class="charts-row">
       <div class="chart-container">
         <h2 class="section-title">Earnings by Category (STX)</h2>
         <div class="horiz-bar-chart">
@@ -538,36 +536,6 @@ function generateDashboardHTML(data: {
                 </div>
               `;
             }).join("")}
-        </div>
-      </div>
-
-      <div class="chart-container">
-        <h2 class="section-title">Quick Stats</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">${activeEndpoints.length}</div>
-            <div class="stat-label">Active Endpoints</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${totals.endpoints - activeEndpoints.length}</div>
-            <div class="stat-label">Unused</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${sortedCategories.length}</div>
-            <div class="stat-label">Categories</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${dailyStats.length > 0 ? Math.round(dailyStats.reduce((s, d) => s + d.calls, 0) / dailyStats.length) : 0}</div>
-            <div class="stat-label">Avg Daily Calls</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${activeEndpoints.length > 0 ? Math.round(activeEndpoints.reduce((s, m) => s + m.avgLatencyMs, 0) / activeEndpoints.length) : 0}ms</div>
-            <div class="stat-label">Avg Latency</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${(totals.stx / Math.max(totals.calls, 1) * 1000).toFixed(2)}</div>
-            <div class="stat-label">mSTX/Call</div>
-          </div>
         </div>
       </div>
     </div>
