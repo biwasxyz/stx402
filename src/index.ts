@@ -1,3 +1,9 @@
+// Polyfill BigInt.toJSON for JSON.stringify compatibility (stacks.js uses BigInt extensively)
+// This must be at the top before any other imports that might use BigInt
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import { fromHono } from "chanfana";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
