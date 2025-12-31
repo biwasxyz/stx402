@@ -5,11 +5,20 @@ import {
   deleteRegistryEntry,
 } from "../utils/registry";
 import { Address } from "@stacks/transactions";
+import {
+  createSignatureRequest,
+  verifyStructuredSignature,
+  getDomain,
+  createActionMessage,
+  getChallenge,
+  consumeChallenge,
+  isTimestampValid,
+} from "../utils/signatures";
 
 export class RegistryDelete extends BaseEndpoint {
   schema = {
     tags: ["Registry"],
-    summary: "(paid) Delete a registered x402 endpoint (owner only)",
+    summary: "(paid) Delete a registered x402 endpoint (owner only, requires signature)",
     requestBody: {
       required: true,
       content: {
@@ -25,6 +34,14 @@ export class RegistryDelete extends BaseEndpoint {
               owner: {
                 type: "string" as const,
                 description: "Owner STX address (must match registered owner)",
+              },
+              signature: {
+                type: "string" as const,
+                description: "SIP-018 signature of the delete challenge (required for deletion)",
+              },
+              challengeId: {
+                type: "string" as const,
+                description: "Challenge ID from initial request (required with signature)",
               },
             },
           },
@@ -45,7 +62,7 @@ export class RegistryDelete extends BaseEndpoint {
     ],
     responses: {
       "200": {
-        description: "Delete successful",
+        description: "Delete successful or challenge issued",
         content: {
           "application/json": {
             schema: {
@@ -58,6 +75,17 @@ export class RegistryDelete extends BaseEndpoint {
                     id: { type: "string" as const },
                     url: { type: "string" as const },
                     name: { type: "string" as const },
+                  },
+                },
+                challenge: {
+                  type: "object" as const,
+                  description: "Signature challenge (when signature not provided)",
+                  properties: {
+                    challengeId: { type: "string" as const },
+                    domain: { type: "string" as const },
+                    message: { type: "string" as const },
+                    action: { type: "string" as const },
+                    expiresAt: { type: "number" as const },
                   },
                 },
                 tokenType: { type: "string" as const },
@@ -73,7 +101,7 @@ export class RegistryDelete extends BaseEndpoint {
         description: "Payment required",
       },
       "403": {
-        description: "Not authorized (not the owner)",
+        description: "Not authorized (not the owner or invalid signature)",
       },
       "404": {
         description: "Endpoint not found",
@@ -83,6 +111,7 @@ export class RegistryDelete extends BaseEndpoint {
 
   async handle(c: AppContext) {
     const tokenType = this.getTokenType(c);
+    const network = c.env.X402_NETWORK as "mainnet" | "testnet";
 
     if (!c.env.METRICS) {
       return this.errorResponse(c, "Registry storage not configured", 500);
@@ -91,6 +120,8 @@ export class RegistryDelete extends BaseEndpoint {
     let body: {
       url?: string;
       owner?: string;
+      signature?: string;
+      challengeId?: string;
     };
 
     try {
@@ -123,7 +154,7 @@ export class RegistryDelete extends BaseEndpoint {
       return this.errorResponse(c, "Endpoint not found in registry", 404);
     }
 
-    // Verify ownership
+    // Verify ownership (address must match)
     if (entry.owner !== ownerAddress) {
       return c.json(
         {
@@ -135,14 +166,94 @@ export class RegistryDelete extends BaseEndpoint {
       );
     }
 
-    // Store info before deletion for response
+    // If no signature provided, issue a challenge
+    if (!body.signature) {
+      const signatureRequest = createSignatureRequest(
+        "delete-endpoint",
+        { url: body.url, owner: ownerAddress },
+        network,
+        true // with challenge
+      );
+
+      return c.json({
+        requiresSignature: true,
+        message: "Delete operation requires a signed challenge. Sign the message and resubmit.",
+        challenge: signatureRequest,
+        tokenType,
+      });
+    }
+
+    // Signature provided - verify it
+    if (!body.challengeId) {
+      return this.errorResponse(c, "challengeId is required when providing signature", 400);
+    }
+
+    // Get and validate the challenge
+    const challenge = getChallenge(body.challengeId);
+    if (!challenge) {
+      return c.json(
+        {
+          error: "Challenge expired or invalid. Request a new challenge.",
+          tokenType,
+        },
+        403
+      );
+    }
+
+    // Verify challenge belongs to this owner
+    if (challenge.owner !== ownerAddress) {
+      return c.json(
+        {
+          error: "Challenge was issued for a different owner",
+          tokenType,
+        },
+        403
+      );
+    }
+
+    // Reconstruct the message that should have been signed
+    const domain = getDomain(network);
+    const message = createActionMessage("challenge-response", {
+      owner: ownerAddress,
+      nonce: challenge.nonce,
+      timestamp: challenge.expiresAt - 5 * 60 * 1000, // Original timestamp
+    });
+
+    // Verify the signature
+    const verifyResult = verifyStructuredSignature(
+      message,
+      domain,
+      body.signature,
+      ownerAddress,
+      network
+    );
+
+    if (!verifyResult.valid) {
+      // Consume the challenge to prevent replay
+      consumeChallenge(body.challengeId);
+
+      return c.json(
+        {
+          error: "Invalid signature",
+          details: verifyResult.error,
+          recoveredAddress: verifyResult.recoveredAddress,
+          expectedAddress: ownerAddress,
+          tokenType,
+        },
+        403
+      );
+    }
+
+    // Consume the challenge (one-time use)
+    consumeChallenge(body.challengeId);
+
+    // Signature verified - proceed with deletion
     const deletedInfo = {
       id: entry.id,
       url: entry.url,
       name: entry.name,
     };
 
-    // Delete the entry
     const deleted = await deleteRegistryEntry(c.env.METRICS, entry.owner, entry.id);
 
     if (!deleted) {
@@ -152,6 +263,7 @@ export class RegistryDelete extends BaseEndpoint {
     return c.json({
       success: true,
       deleted: deletedInfo,
+      verifiedBy: "signature",
       tokenType,
     });
   }

@@ -135,6 +135,7 @@ import { RegistryUpdate } from "./endpoints/registryUpdate";
 import { RegistryDelete } from "./endpoints/registryDelete";
 import { RegistryAdminVerify } from "./endpoints/registryAdminVerify";
 import { RegistryAdminPending } from "./endpoints/registryAdminPending";
+import { RegistryMyEndpoints } from "./endpoints/registryMyEndpoints";
 
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 import { metricsMiddleware } from "./middleware/metrics";
@@ -311,6 +312,7 @@ openapi.get("/api/registry/list", RegistryList as any); // Free endpoint
 openapi.post("/api/registry/details", paymentMiddleware, trackMetrics, RegistryDetails as any);
 openapi.post("/api/registry/update", paymentMiddleware, trackMetrics, RegistryUpdate as any);
 openapi.post("/api/registry/delete", paymentMiddleware, trackMetrics, RegistryDelete as any);
+openapi.post("/api/registry/my-endpoints", paymentMiddleware, trackMetrics, RegistryMyEndpoints as any);
 openapi.post("/api/admin/registry/verify", paymentMiddleware, trackMetrics, RegistryAdminVerify as any);
 openapi.post("/api/admin/registry/pending", paymentMiddleware, trackMetrics, RegistryAdminPending as any);
 
