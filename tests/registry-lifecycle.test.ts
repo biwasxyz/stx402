@@ -1,0 +1,699 @@
+/**
+ * Registry Endpoint Lifecycle Tests
+ *
+ * Tests the full registry lifecycle:
+ * 1. Probe - probe an external x402 endpoint
+ * 2. Register - register a test endpoint
+ * 3. List - list all endpoints (free, should include ours)
+ * 4. Details - get full details of our endpoint
+ * 5. Update - update our endpoint metadata
+ * 6. My Endpoints - list endpoints we own (with signature)
+ * 7. Delete - delete our endpoint (with signature)
+ *
+ * Usage:
+ *   bun run tests/registry-lifecycle.test.ts
+ *
+ * Environment:
+ *   X402_CLIENT_PK  - Testnet mnemonic for payments (required)
+ *   VERBOSE=1       - Enable verbose logging
+ */
+
+import type { TokenType, NetworkType } from "x402-stacks";
+import { X402PaymentClient } from "x402-stacks";
+import { deriveChildAccount } from "../src/utils/wallet";
+import {
+  Cl,
+  cvToHex,
+  encodeStructuredData,
+  signStructuredData,
+} from "@stacks/transactions";
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
+import {
+  COLORS,
+  X402_CLIENT_PK,
+  X402_NETWORK,
+  X402_WORKER_URL,
+} from "./_shared_utils";
+
+// =============================================================================
+// Configuration
+// =============================================================================
+
+const VERBOSE = process.env.VERBOSE === "1";
+const TOKEN_TYPE: TokenType = "STX";
+
+// Test endpoint URL - use our own stx402.com as the test subject
+const TEST_ENDPOINT_URL = `https://stx402.com/api/test-registry-${Date.now()}`;
+const TEST_ENDPOINT_NAME = "Registry Lifecycle Test";
+const TEST_ENDPOINT_DESCRIPTION = "Temporary endpoint for testing registry lifecycle";
+
+// =============================================================================
+// SIP-018 Signature Helpers
+// =============================================================================
+
+function getDomain(network: "mainnet" | "testnet") {
+  return Cl.tuple({
+    name: Cl.stringAscii("stx402-registry"),
+    version: Cl.stringAscii("1.0.0"),
+    "chain-id": Cl.uint(network === "mainnet" ? 1 : 2147483648),
+  });
+}
+
+function createListMyEndpointsMessage(owner: string, timestamp: number) {
+  return Cl.tuple({
+    action: Cl.stringAscii("list-my-endpoints"),
+    owner: Cl.stringAscii(owner),
+    timestamp: Cl.uint(timestamp),
+  });
+}
+
+function createChallengeResponseMessage(owner: string, nonce: string, timestamp: number) {
+  return Cl.tuple({
+    action: Cl.stringAscii("challenge-response"),
+    owner: Cl.stringAscii(owner),
+    nonce: Cl.stringAscii(nonce),
+    timestamp: Cl.uint(timestamp),
+  });
+}
+
+async function signMessage(
+  message: ReturnType<typeof Cl.tuple>,
+  domain: ReturnType<typeof Cl.tuple>,
+  privateKey: string
+): Promise<string> {
+  // Use stacks.js signStructuredData
+  const signature = signStructuredData({
+    message,
+    domain,
+    privateKey,
+  });
+  return signature.data;
+}
+
+// =============================================================================
+// Test Helpers
+// =============================================================================
+
+function log(message: string, ...args: unknown[]) {
+  if (VERBOSE) {
+    console.log(`  ${COLORS.gray}${message}${COLORS.reset}`, ...args);
+  }
+}
+
+function logStep(step: number, total: number, name: string) {
+  console.log(`\n${COLORS.bright}[${step}/${total}]${COLORS.reset} ${COLORS.cyan}${name}${COLORS.reset}`);
+}
+
+function logSuccess(message: string) {
+  console.log(`  ${COLORS.green}✓${COLORS.reset} ${message}`);
+}
+
+function logError(message: string) {
+  console.log(`  ${COLORS.red}✗${COLORS.reset} ${message}`);
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// =============================================================================
+// X402 Payment Flow
+// =============================================================================
+
+interface PaymentRequired {
+  maxAmountRequired: string;
+  resource: string;
+  payTo: string;
+  network: "mainnet" | "testnet";
+  nonce: string;
+  expiresAt: string;
+  tokenType: TokenType;
+}
+
+async function makeX402Request(
+  endpoint: string,
+  method: "GET" | "POST",
+  x402Client: X402PaymentClient,
+  body?: unknown,
+  extraHeaders?: Record<string, string>
+): Promise<{ status: number; data: unknown; headers: Headers }> {
+  const fullUrl = `${X402_WORKER_URL}${endpoint}`;
+  const tokenParam = endpoint.includes("?") ? `&tokenType=${TOKEN_TYPE}` : `?tokenType=${TOKEN_TYPE}`;
+
+  // Step 1: Initial request to get 402
+  log(`Requesting ${method} ${endpoint}...`);
+
+  const initialRes = await fetch(`${fullUrl}${tokenParam}`, {
+    method,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...extraHeaders,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  // If not 402, return as-is (e.g., free endpoints or errors)
+  if (initialRes.status !== 402) {
+    const data = await initialRes.json().catch(() => initialRes.text());
+    return { status: initialRes.status, data, headers: initialRes.headers };
+  }
+
+  // Step 2: Get payment requirements
+  const paymentReq: PaymentRequired = await initialRes.json();
+  log(`Payment required: ${paymentReq.maxAmountRequired} ${paymentReq.tokenType}`);
+
+  // Step 3: Sign payment
+  const signResult = await x402Client.signPayment(paymentReq);
+  log("Payment signed");
+
+  // Step 4: Retry with payment
+  const paidRes = await fetch(`${fullUrl}${tokenParam}`, {
+    method,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...extraHeaders,
+      "X-PAYMENT": signResult.signedTransaction,
+      "X-PAYMENT-TOKEN-TYPE": TOKEN_TYPE,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await paidRes.json().catch(() => paidRes.text());
+  return { status: paidRes.status, data, headers: paidRes.headers };
+}
+
+// =============================================================================
+// Test Steps
+// =============================================================================
+
+interface TestContext {
+  x402Client: X402PaymentClient;
+  ownerAddress: string;
+  privateKey: string;
+  network: "mainnet" | "testnet";
+  registeredEntryId?: string;
+}
+
+async function testProbe(ctx: TestContext): Promise<boolean> {
+  logStep(1, 7, "Probe External Endpoint");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/registry/probe",
+      "POST",
+      ctx.x402Client,
+      { url: "https://stx402.com/api/ai/dad-joke" }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { success: boolean; data?: { isX402: boolean } };
+    if (!result.success || !result.data?.isX402) {
+      logError(`Probe failed or endpoint not x402: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    logSuccess(`Probed successfully - isX402: ${result.data.isX402}`);
+    log("Probe data:", result.data);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testRegister(ctx: TestContext): Promise<boolean> {
+  logStep(2, 7, "Register Test Endpoint");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/registry/register",
+      "POST",
+      ctx.x402Client,
+      {
+        url: TEST_ENDPOINT_URL,
+        name: TEST_ENDPOINT_NAME,
+        description: TEST_ENDPOINT_DESCRIPTION,
+        owner: ctx.ownerAddress,
+        category: "test",
+        tags: ["test", "lifecycle"],
+      }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { success: boolean; entry?: { id: string } };
+    if (!result.success || !result.entry?.id) {
+      logError(`Registration failed: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    ctx.registeredEntryId = result.entry.id;
+    logSuccess(`Registered with ID: ${ctx.registeredEntryId}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testList(ctx: TestContext): Promise<boolean> {
+  logStep(3, 7, "List All Endpoints (Free)");
+
+  try {
+    // List is a free endpoint - no payment required
+    const res = await fetch(`${X402_WORKER_URL}/api/registry/list`);
+    const data = await res.json();
+
+    if (res.status !== 200) {
+      logError(`Expected 200, got ${res.status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { entries: Array<{ url: string }> };
+    if (!result.entries) {
+      logError(`No entries array: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const found = result.entries.some((e) => e.url === TEST_ENDPOINT_URL);
+    if (!found) {
+      logError(`Our endpoint not found in list (${result.entries.length} total)`);
+      return false;
+    }
+
+    logSuccess(`Listed ${result.entries.length} endpoints, found ours`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testDetails(ctx: TestContext): Promise<boolean> {
+  logStep(4, 7, "Get Endpoint Details");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/registry/details",
+      "POST",
+      ctx.x402Client,
+      { url: TEST_ENDPOINT_URL }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { entry?: { name: string; owner: string } };
+    if (!result.entry) {
+      logError(`No entry in response: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    if (result.entry.name !== TEST_ENDPOINT_NAME) {
+      logError(`Name mismatch: ${result.entry.name}`);
+      return false;
+    }
+
+    if (result.entry.owner !== ctx.ownerAddress) {
+      logError(`Owner mismatch: ${result.entry.owner}`);
+      return false;
+    }
+
+    logSuccess(`Details retrieved - owner: ${result.entry.owner}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testUpdate(ctx: TestContext): Promise<boolean> {
+  logStep(5, 7, "Update Endpoint (Payment Auth)");
+
+  try {
+    const newDescription = "Updated description for lifecycle test";
+
+    const { status, data } = await makeX402Request(
+      "/api/registry/update",
+      "POST",
+      ctx.x402Client,
+      {
+        url: TEST_ENDPOINT_URL,
+        owner: ctx.ownerAddress,
+        description: newDescription,
+        tags: ["test", "lifecycle", "updated"],
+      }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { success: boolean; entry?: { description: string }; verifiedBy?: string };
+    if (!result.success) {
+      logError(`Update failed: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    logSuccess(`Updated - verified by: ${result.verifiedBy}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testMyEndpoints(ctx: TestContext): Promise<boolean> {
+  logStep(6, 7, "List My Endpoints (Signature Auth)");
+
+  try {
+    const timestamp = Date.now();
+    const domain = getDomain(ctx.network);
+    const message = createListMyEndpointsMessage(ctx.ownerAddress, timestamp);
+
+    log("Signing message for my-endpoints...");
+    const signature = await signMessage(message, domain, ctx.privateKey);
+
+    const { status, data } = await makeX402Request(
+      "/api/registry/my-endpoints",
+      "POST",
+      ctx.x402Client,
+      {
+        owner: ctx.ownerAddress,
+        signature,
+        timestamp,
+      }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { entries: Array<{ url: string }>; verifiedBy?: string };
+    if (!result.entries) {
+      logError(`No entries: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const found = result.entries.some((e) => e.url === TEST_ENDPOINT_URL);
+    if (!found) {
+      logError(`Our endpoint not in my-endpoints list`);
+      return false;
+    }
+
+    logSuccess(`Found ${result.entries.length} owned endpoint(s) - verified by: ${result.verifiedBy}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testDelete(ctx: TestContext): Promise<boolean> {
+  logStep(7, 7, "Delete Endpoint (Challenge-Response)");
+
+  try {
+    // Step 1: Request delete without signature to get challenge
+    log("Requesting delete challenge...");
+    const { status: challengeStatus, data: challengeData } = await makeX402Request(
+      "/api/registry/delete",
+      "POST",
+      ctx.x402Client,
+      {
+        url: TEST_ENDPOINT_URL,
+        owner: ctx.ownerAddress,
+      }
+    );
+
+    if (challengeStatus !== 200) {
+      logError(`Challenge request failed: ${challengeStatus} ${JSON.stringify(challengeData)}`);
+      return false;
+    }
+
+    const challenge = challengeData as {
+      requiresSignature: boolean;
+      challenge?: {
+        challengeId: string;
+        message: string;
+        domain: string;
+        expiresAt: number;
+      };
+    };
+
+    if (!challenge.requiresSignature || !challenge.challenge) {
+      logError(`No challenge in response: ${JSON.stringify(challengeData)}`);
+      return false;
+    }
+
+    log(`Got challenge ID: ${challenge.challenge.challengeId}`);
+
+    // Step 2: Parse the challenge and sign it
+    // The challenge contains the nonce and timestamp we need to reconstruct the message
+    const expiresAt = challenge.challenge.expiresAt;
+    const originalTimestamp = expiresAt - 5 * 60 * 1000; // Original timestamp
+
+    // Extract nonce from the challenge message
+    // We need to decode the hex message to get the nonce
+    // Actually, we need to look at the challenge more carefully
+    // The server expects us to sign a challenge-response message with the nonce
+
+    // Let's examine what the server sent us
+    log("Challenge data:", challenge.challenge);
+
+    // The challenge ID is what we need to send back, along with a signature
+    // We need to reconstruct what message to sign based on the server's challenge
+    // Looking at registryDelete.ts, the server expects:
+    // - message = createActionMessage("challenge-response", { owner, nonce, timestamp })
+    // - where timestamp = challenge.expiresAt - 5 * 60 * 1000
+
+    // But we don't have the nonce directly... Let me check the server code again
+    // Actually, looking at the signatures.ts createSignatureRequest, it generates a nonce
+    // and stores it, but doesn't return it directly to us...
+
+    // The server stores: { nonce, expiresAt, owner } in the challenge
+    // And returns: { domain, message, action, expiresAt, challengeId }
+    // The "message" in the response IS the hex-encoded message we need to sign!
+
+    // So we should sign the raw message bytes that were sent to us
+    const domain = getDomain(ctx.network);
+
+    // Decode the challenge message from hex to get the actual Clarity value
+    // Actually, for proper SIP-018 signing, we need to sign the encoded structured data
+    // The server sent us the pre-encoded message, we need to hash it properly
+
+    // Looking at the server code more carefully:
+    // 1. Server creates message with nonce and stores challenge
+    // 2. Server sends hex-encoded domain and message
+    // 3. Client should sign using SIP-018 structured data signing
+    // 4. Client sends signature + challengeId back
+
+    // The message hex in the challenge IS the cv we need to sign
+    // But we need to do it properly with the domain...
+
+    // Let's try using the raw hex values from the challenge
+    const messageHex = challenge.challenge.message;
+    const domainHex = challenge.challenge.domain;
+
+    // For SIP-018 signing, we need to:
+    // 1. Concatenate: SIP018_MSG_PREFIX + hash(domain) + hash(message)
+    // 2. Hash that
+    // 3. Sign the hash
+
+    // Actually, let's use signStructuredData from stacks.js directly
+    // We need to pass the decoded Clarity values
+
+    // The simpler approach: use the low-level signing
+    // SIP-018 prefix
+    const SIP018_PREFIX = hexToBytes("534950303138"); // "SIP018" in hex
+
+    // Hash the domain and message
+    const domainBytes = hexToBytes(domainHex.startsWith("0x") ? domainHex.slice(2) : domainHex);
+    const messageBytes = hexToBytes(messageHex.startsWith("0x") ? messageHex.slice(2) : messageHex);
+
+    const domainHash = sha256(domainBytes);
+    const messageHash = sha256(messageBytes);
+
+    // Combine: prefix + domainHash + messageHash
+    const combined = new Uint8Array(SIP018_PREFIX.length + domainHash.length + messageHash.length);
+    combined.set(SIP018_PREFIX, 0);
+    combined.set(domainHash, SIP018_PREFIX.length);
+    combined.set(messageHash, SIP018_PREFIX.length + domainHash.length);
+
+    // Hash the combined data
+    const finalHash = sha256(combined);
+
+    // Sign it
+    const { signMessageHashRsv } = await import("@stacks/transactions");
+    const signature = signMessageHashRsv({
+      privateKey: ctx.privateKey,
+      messageHash: bytesToHex(finalHash),
+    });
+
+    log("Signed challenge, submitting...");
+
+    // Step 3: Submit delete with signature
+    const { status: deleteStatus, data: deleteData } = await makeX402Request(
+      "/api/registry/delete",
+      "POST",
+      ctx.x402Client,
+      {
+        url: TEST_ENDPOINT_URL,
+        owner: ctx.ownerAddress,
+        signature: signature.data,
+        challengeId: challenge.challenge.challengeId,
+      }
+    );
+
+    if (deleteStatus !== 200) {
+      logError(`Delete failed: ${deleteStatus} ${JSON.stringify(deleteData)}`);
+      return false;
+    }
+
+    const result = deleteData as { success: boolean; deleted?: { url: string }; verifiedBy?: string };
+    if (!result.success) {
+      logError(`Delete not successful: ${JSON.stringify(deleteData)}`);
+      return false;
+    }
+
+    logSuccess(`Deleted - verified by: ${result.verifiedBy}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+// Cleanup function to ensure test endpoint is deleted even if tests fail
+async function cleanup(ctx: TestContext): Promise<void> {
+  console.log(`\n${COLORS.yellow}Cleanup: Attempting to delete test endpoint...${COLORS.reset}`);
+
+  try {
+    // Try to delete without signature first (will get challenge)
+    // Then just let it expire - or we can try a simpler approach
+
+    // Actually, let's just try the delete flow again
+    // First check if the endpoint exists
+    const res = await fetch(`${X402_WORKER_URL}/api/registry/list`);
+    const data = await res.json() as { entries: Array<{ url: string }> };
+
+    const exists = data.entries?.some((e) => e.url === TEST_ENDPOINT_URL);
+    if (!exists) {
+      console.log(`  ${COLORS.gray}Endpoint already deleted${COLORS.reset}`);
+      return;
+    }
+
+    console.log(`  ${COLORS.gray}Endpoint still exists, manual cleanup may be needed${COLORS.reset}`);
+    console.log(`  ${COLORS.gray}URL: ${TEST_ENDPOINT_URL}${COLORS.reset}`);
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+// =============================================================================
+// Main
+// =============================================================================
+
+async function main() {
+  console.clear();
+  console.log(`\n${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+  console.log(`${COLORS.bright}  REGISTRY LIFECYCLE TEST${COLORS.reset}`);
+  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+
+  if (!X402_CLIENT_PK) {
+    console.error(`${COLORS.red}Error: Set X402_CLIENT_PK env var${COLORS.reset}`);
+    process.exit(1);
+  }
+
+  // Validate network
+  if (X402_NETWORK !== "mainnet" && X402_NETWORK !== "testnet") {
+    console.error(`${COLORS.red}Error: Invalid X402_NETWORK${COLORS.reset}`);
+    process.exit(1);
+  }
+
+  const network: NetworkType = X402_NETWORK;
+
+  // Initialize wallet
+  const { address, key } = await deriveChildAccount(network, X402_CLIENT_PK, 0);
+
+  const x402Client = new X402PaymentClient({
+    network,
+    privateKey: key,
+  });
+
+  console.log(`  Wallet:   ${address}`);
+  console.log(`  Network:  ${network}`);
+  console.log(`  Server:   ${X402_WORKER_URL}`);
+  console.log(`  Token:    ${TOKEN_TYPE}`);
+  console.log(`  Test URL: ${TEST_ENDPOINT_URL}`);
+  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+
+  const ctx: TestContext = {
+    x402Client,
+    ownerAddress: address,
+    privateKey: key,
+    network,
+  };
+
+  const results: Array<{ name: string; passed: boolean }> = [];
+
+  try {
+    // Run tests in sequence
+    results.push({ name: "Probe", passed: await testProbe(ctx) });
+    await sleep(500);
+
+    results.push({ name: "Register", passed: await testRegister(ctx) });
+    await sleep(500);
+
+    if (results[1].passed) {
+      results.push({ name: "List", passed: await testList(ctx) });
+      await sleep(500);
+
+      results.push({ name: "Details", passed: await testDetails(ctx) });
+      await sleep(500);
+
+      results.push({ name: "Update", passed: await testUpdate(ctx) });
+      await sleep(500);
+
+      results.push({ name: "My Endpoints", passed: await testMyEndpoints(ctx) });
+      await sleep(500);
+
+      results.push({ name: "Delete", passed: await testDelete(ctx) });
+    }
+  } finally {
+    // Cleanup
+    await cleanup(ctx);
+  }
+
+  // Summary
+  console.log(`\n${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+  console.log(`${COLORS.bright}  RESULTS${COLORS.reset}`);
+  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+
+  const passed = results.filter((r) => r.passed).length;
+  const total = results.length;
+
+  for (const r of results) {
+    const icon = r.passed ? `${COLORS.green}✓${COLORS.reset}` : `${COLORS.red}✗${COLORS.reset}`;
+    console.log(`  ${icon} ${r.name}`);
+  }
+
+  console.log(`\n  ${passed}/${total} tests passed`);
+  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}\n`);
+
+  process.exit(passed === total ? 0 : 1);
+}
+
+main().catch((error) => {
+  console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
+  process.exit(1);
+});

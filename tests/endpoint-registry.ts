@@ -772,7 +772,7 @@ const mathEndpoints: TestConfig[] = [
 ];
 
 // =============================================================================
-// UTILITY ENDPOINTS (22)
+// UTILITY ENDPOINTS (23)
 // =============================================================================
 
 const utilEndpoints: TestConfig[] = [
@@ -957,6 +957,25 @@ const utilEndpoints: TestConfig[] = [
       return d.levenshtein === 3 && d.tokenType === tokenType;
     },
   },
+  {
+    name: "verify-signature",
+    endpoint: "/api/util/verify-signature",
+    method: "POST",
+    // Test with a simple signature verification request
+    // Using mode=simple with a dummy signature that will fail validation
+    // but the endpoint should still return a proper response
+    body: {
+      signature: "0".repeat(130), // Invalid signature, but tests endpoint works
+      address: FIXTURES.mainnetAddress,
+      mode: "simple",
+      message: "test message",
+    },
+    validateResponse: (data, tokenType) => {
+      const d = data as { valid: boolean; mode: string; tokenType: TokenType };
+      // Signature won't be valid, but endpoint should respond correctly
+      return d.mode === "simple" && d.tokenType === tokenType && "valid" in d;
+    },
+  },
 ];
 
 // =============================================================================
@@ -988,13 +1007,13 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
 
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
-  total: ENDPOINT_REGISTRY.length,
-  stacks: stacksEndpoints.length,
-  ai: aiEndpoints.length,
-  text: textEndpoints.length,
-  data: dataEndpoints.length,
-  crypto: cryptoEndpoints.length,
-  random: randomEndpoints.length,
-  math: mathEndpoints.length,
-  util: utilEndpoints.length,
+  total: ENDPOINT_REGISTRY.length, // Should be 99 (98 + verify-signature)
+  stacks: stacksEndpoints.length,  // 15
+  ai: aiEndpoints.length,          // 13
+  text: textEndpoints.length,      // 25
+  data: dataEndpoints.length,      // 8
+  crypto: cryptoEndpoints.length,  // 2
+  random: randomEndpoints.length,  // 7
+  math: mathEndpoints.length,      // 6
+  util: utilEndpoints.length,      // 23
 };
