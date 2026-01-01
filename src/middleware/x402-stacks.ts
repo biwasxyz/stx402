@@ -42,6 +42,9 @@ export interface SettlePaymentResult {
   blockHeight?: number;
   error?: string;
   reason?: string;
+  validationError?: string;  // From x402-stacks verifier
+  sender?: string;
+  recipient?: string;
 }
 
 // Payment error codes for client debugging
@@ -66,6 +69,7 @@ export interface PaymentErrorResponse {
     settleReason?: string;
     settleStatus?: string;
     exceptionMessage?: string;
+    validationError?: string;
   };
 }
 
@@ -79,7 +83,8 @@ function classifyPaymentError(error: unknown, settleResult?: SettlePaymentResult
   const errorStr = String(error).toLowerCase();
   const resultError = settleResult?.error?.toLowerCase() || "";
   const resultReason = settleResult?.reason?.toLowerCase() || "";
-  const combined = `${errorStr} ${resultError} ${resultReason}`;
+  const validationError = settleResult?.validationError?.toLowerCase() || "";
+  const combined = `${errorStr} ${resultError} ${resultReason} ${validationError}`;
 
   // Network/connection errors - transient, retry soon
   if (
@@ -283,9 +288,9 @@ export const x402PaymentMiddleware = () => {
     if (!settleResult.isValid) {
       console.error("Payment invalid/unconfirmed:", settleResult);
 
-      // Classify based on the settle result
+      // Classify based on the settle result (check validationError first, then error)
       const classified = classifyPaymentError(
-        settleResult.error || settleResult.status || "invalid",
+        settleResult.validationError || settleResult.error || settleResult.status || "invalid",
         settleResult
       );
 
@@ -299,6 +304,7 @@ export const x402PaymentMiddleware = () => {
           settleError: settleResult.error,
           settleReason: settleResult.reason,
           settleStatus: settleResult.status,
+          validationError: settleResult.validationError,
         },
       };
 
