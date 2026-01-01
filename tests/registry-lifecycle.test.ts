@@ -8,7 +8,8 @@
  * 4. Details - get full details of our endpoint
  * 5. Update - update our endpoint metadata
  * 6. My Endpoints - list endpoints we own (with signature)
- * 7. Delete - delete our endpoint (with signature)
+ * 7. Transfer - transfer ownership to account[1] (challenge-response)
+ * 8. Delete - delete our endpoint as new owner (challenge-response)
  *
  * Usage:
  *   bun run tests/registry-lifecycle.test.ts
@@ -191,10 +192,14 @@ interface TestContext {
   privateKey: string;
   network: "mainnet" | "testnet";
   registeredEntryId?: string;
+  // Second account for transfer testing (derived with index 1)
+  account2Address: string;
+  account2PrivateKey: string;
+  account2Client: X402PaymentClient;
 }
 
 async function testProbe(ctx: TestContext): Promise<boolean> {
-  logStep(1, 7, "Probe External Endpoint");
+  logStep(1, 8, "Probe External Endpoint");
 
   try {
     const { status, data } = await makeX402Request(
@@ -225,7 +230,7 @@ async function testProbe(ctx: TestContext): Promise<boolean> {
 }
 
 async function testRegister(ctx: TestContext): Promise<boolean> {
-  logStep(2, 7, "Register Test Endpoint");
+  logStep(2, 8, "Register Test Endpoint");
 
   try {
     const { status, data } = await makeX402Request(
@@ -263,7 +268,7 @@ async function testRegister(ctx: TestContext): Promise<boolean> {
 }
 
 async function testList(ctx: TestContext): Promise<boolean> {
-  logStep(3, 7, "List All Endpoints (Free)");
+  logStep(3, 8, "List All Endpoints (Free)");
 
   try {
     // List is a free endpoint - no payment required
@@ -296,7 +301,7 @@ async function testList(ctx: TestContext): Promise<boolean> {
 }
 
 async function testDetails(ctx: TestContext): Promise<boolean> {
-  logStep(4, 7, "Get Endpoint Details");
+  logStep(4, 8, "Get Endpoint Details");
 
   try {
     const { status, data } = await makeX402Request(
@@ -336,7 +341,7 @@ async function testDetails(ctx: TestContext): Promise<boolean> {
 }
 
 async function testUpdate(ctx: TestContext): Promise<boolean> {
-  logStep(5, 7, "Update Endpoint (Payment Auth)");
+  logStep(5, 8, "Update Endpoint (Payment Auth)");
 
   try {
     const newDescription = "Updated description for lifecycle test";
@@ -373,7 +378,7 @@ async function testUpdate(ctx: TestContext): Promise<boolean> {
 }
 
 async function testMyEndpoints(ctx: TestContext): Promise<boolean> {
-  logStep(6, 7, "List My Endpoints (Signature Auth)");
+  logStep(6, 8, "List My Endpoints (Signature Auth)");
 
   try {
     const timestamp = Date.now();
@@ -419,19 +424,52 @@ async function testMyEndpoints(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testDelete(ctx: TestContext): Promise<boolean> {
-  logStep(7, 7, "Delete Endpoint (Challenge-Response)");
+// Helper to sign a challenge using the hex domain/message from server
+async function signChallenge(
+  challengeData: { message: string; domain: string },
+  privateKey: string
+): Promise<string> {
+  const SIP018_PREFIX = hexToBytes("534950303138"); // "SIP018" in hex
+
+  const domainHex = challengeData.domain;
+  const messageHex = challengeData.message;
+
+  const domainBytes = hexToBytes(domainHex.startsWith("0x") ? domainHex.slice(2) : domainHex);
+  const messageBytes = hexToBytes(messageHex.startsWith("0x") ? messageHex.slice(2) : messageHex);
+
+  const domainHash = sha256(domainBytes);
+  const messageHash = sha256(messageBytes);
+
+  const combined = new Uint8Array(SIP018_PREFIX.length + domainHash.length + messageHash.length);
+  combined.set(SIP018_PREFIX, 0);
+  combined.set(domainHash, SIP018_PREFIX.length);
+  combined.set(messageHash, SIP018_PREFIX.length + domainHash.length);
+
+  const finalHash = sha256(combined);
+
+  const { signMessageHashRsv } = await import("@stacks/transactions");
+  const signature = signMessageHashRsv({
+    privateKey,
+    messageHash: bytesToHex(finalHash),
+  });
+
+  return signature.data;
+}
+
+async function testTransfer(ctx: TestContext): Promise<boolean> {
+  logStep(7, 8, "Transfer Ownership (Challenge-Response)");
 
   try {
-    // Step 1: Request delete without signature to get challenge
-    log("Requesting delete challenge...");
+    // Step 1: Request transfer without signature to get challenge
+    log(`Transferring from ${ctx.ownerAddress} to ${ctx.account2Address}...`);
     const { status: challengeStatus, data: challengeData } = await makeX402Request(
-      "/api/registry/delete",
+      "/api/registry/transfer",
       "POST",
       ctx.x402Client,
       {
         url: TEST_ENDPOINT_URL,
         owner: ctx.ownerAddress,
+        newOwner: ctx.account2Address,
       }
     );
 
@@ -457,99 +495,101 @@ async function testDelete(ctx: TestContext): Promise<boolean> {
 
     log(`Got challenge ID: ${challenge.challenge.challengeId}`);
 
-    // Step 2: Parse the challenge and sign it
-    // The challenge contains the nonce and timestamp we need to reconstruct the message
-    const expiresAt = challenge.challenge.expiresAt;
-    const originalTimestamp = expiresAt - 5 * 60 * 1000; // Original timestamp
+    // Step 2: Sign the challenge with account 0's key (current owner)
+    const signature = await signChallenge(challenge.challenge, ctx.privateKey);
+    log("Signed challenge, submitting transfer...");
 
-    // Extract nonce from the challenge message
-    // We need to decode the hex message to get the nonce
-    // Actually, we need to look at the challenge more carefully
-    // The server expects us to sign a challenge-response message with the nonce
-
-    // Let's examine what the server sent us
-    log("Challenge data:", challenge.challenge);
-
-    // The challenge ID is what we need to send back, along with a signature
-    // We need to reconstruct what message to sign based on the server's challenge
-    // Looking at registryDelete.ts, the server expects:
-    // - message = createActionMessage("challenge-response", { owner, nonce, timestamp })
-    // - where timestamp = challenge.expiresAt - 5 * 60 * 1000
-
-    // But we don't have the nonce directly... Let me check the server code again
-    // Actually, looking at the signatures.ts createSignatureRequest, it generates a nonce
-    // and stores it, but doesn't return it directly to us...
-
-    // The server stores: { nonce, expiresAt, owner } in the challenge
-    // And returns: { domain, message, action, expiresAt, challengeId }
-    // The "message" in the response IS the hex-encoded message we need to sign!
-
-    // So we should sign the raw message bytes that were sent to us
-    const domain = getDomain(ctx.network);
-
-    // Decode the challenge message from hex to get the actual Clarity value
-    // Actually, for proper SIP-018 signing, we need to sign the encoded structured data
-    // The server sent us the pre-encoded message, we need to hash it properly
-
-    // Looking at the server code more carefully:
-    // 1. Server creates message with nonce and stores challenge
-    // 2. Server sends hex-encoded domain and message
-    // 3. Client should sign using SIP-018 structured data signing
-    // 4. Client sends signature + challengeId back
-
-    // The message hex in the challenge IS the cv we need to sign
-    // But we need to do it properly with the domain...
-
-    // Let's try using the raw hex values from the challenge
-    const messageHex = challenge.challenge.message;
-    const domainHex = challenge.challenge.domain;
-
-    // For SIP-018 signing, we need to:
-    // 1. Concatenate: SIP018_MSG_PREFIX + hash(domain) + hash(message)
-    // 2. Hash that
-    // 3. Sign the hash
-
-    // Actually, let's use signStructuredData from stacks.js directly
-    // We need to pass the decoded Clarity values
-
-    // The simpler approach: use the low-level signing
-    // SIP-018 prefix
-    const SIP018_PREFIX = hexToBytes("534950303138"); // "SIP018" in hex
-
-    // Hash the domain and message
-    const domainBytes = hexToBytes(domainHex.startsWith("0x") ? domainHex.slice(2) : domainHex);
-    const messageBytes = hexToBytes(messageHex.startsWith("0x") ? messageHex.slice(2) : messageHex);
-
-    const domainHash = sha256(domainBytes);
-    const messageHash = sha256(messageBytes);
-
-    // Combine: prefix + domainHash + messageHash
-    const combined = new Uint8Array(SIP018_PREFIX.length + domainHash.length + messageHash.length);
-    combined.set(SIP018_PREFIX, 0);
-    combined.set(domainHash, SIP018_PREFIX.length);
-    combined.set(messageHash, SIP018_PREFIX.length + domainHash.length);
-
-    // Hash the combined data
-    const finalHash = sha256(combined);
-
-    // Sign it
-    const { signMessageHashRsv } = await import("@stacks/transactions");
-    const signature = signMessageHashRsv({
-      privateKey: ctx.privateKey,
-      messageHash: bytesToHex(finalHash),
-    });
-
-    log("Signed challenge, submitting...");
-
-    // Step 3: Submit delete with signature
-    const { status: deleteStatus, data: deleteData } = await makeX402Request(
-      "/api/registry/delete",
+    // Step 3: Submit transfer with signature
+    const { status: transferStatus, data: transferData } = await makeX402Request(
+      "/api/registry/transfer",
       "POST",
       ctx.x402Client,
       {
         url: TEST_ENDPOINT_URL,
         owner: ctx.ownerAddress,
-        signature: signature.data,
+        newOwner: ctx.account2Address,
+        signature,
+        challengeId: challenge.challenge.challengeId,
+      }
+    );
+
+    if (transferStatus !== 200) {
+      logError(`Transfer failed: ${transferStatus} ${JSON.stringify(transferData)}`);
+      return false;
+    }
+
+    const result = transferData as {
+      success: boolean;
+      transferred?: { from: string; to: string };
+      verifiedBy?: string;
+    };
+
+    if (!result.success) {
+      logError(`Transfer not successful: ${JSON.stringify(transferData)}`);
+      return false;
+    }
+
+    logSuccess(`Transferred from ${result.transferred?.from} to ${result.transferred?.to} - verified by: ${result.verifiedBy}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testDelete(ctx: TestContext): Promise<boolean> {
+  logStep(8, 8, "Delete Endpoint as New Owner (Challenge-Response)");
+
+  try {
+    // Now account2 is the owner after transfer, so we use account2's credentials
+    log(`Deleting as new owner: ${ctx.account2Address}...`);
+
+    // Step 1: Request delete without signature to get challenge
+    const { status: challengeStatus, data: challengeData } = await makeX402Request(
+      "/api/registry/delete",
+      "POST",
+      ctx.account2Client, // Use account2's client for payment
+      {
+        url: TEST_ENDPOINT_URL,
+        owner: ctx.account2Address, // New owner after transfer
+      }
+    );
+
+    if (challengeStatus !== 200) {
+      logError(`Challenge request failed: ${challengeStatus} ${JSON.stringify(challengeData)}`);
+      return false;
+    }
+
+    const challenge = challengeData as {
+      requiresSignature: boolean;
+      challenge?: {
+        challengeId: string;
+        message: string;
+        domain: string;
+        expiresAt: number;
+      };
+    };
+
+    if (!challenge.requiresSignature || !challenge.challenge) {
+      logError(`No challenge in response: ${JSON.stringify(challengeData)}`);
+      return false;
+    }
+
+    log(`Got challenge ID: ${challenge.challenge.challengeId}`);
+
+    // Step 2: Sign with account2's key (new owner)
+    const signature = await signChallenge(challenge.challenge, ctx.account2PrivateKey);
+    log("Signed challenge, submitting delete...");
+
+    // Step 3: Submit delete with signature
+    const { status: deleteStatus, data: deleteData } = await makeX402Request(
+      "/api/registry/delete",
+      "POST",
+      ctx.account2Client,
+      {
+        url: TEST_ENDPOINT_URL,
+        owner: ctx.account2Address,
+        signature,
         challengeId: challenge.challenge.challengeId,
       }
     );
@@ -622,7 +662,7 @@ async function main() {
 
   const network: NetworkType = X402_NETWORK;
 
-  // Initialize wallet
+  // Initialize wallet - account 0 (primary)
   const { address, key } = await deriveChildAccount(network, X402_CLIENT_PK, 0);
 
   const x402Client = new X402PaymentClient({
@@ -630,11 +670,20 @@ async function main() {
     privateKey: key,
   });
 
-  console.log(`  Wallet:   ${address}`);
-  console.log(`  Network:  ${network}`);
-  console.log(`  Server:   ${X402_WORKER_URL}`);
-  console.log(`  Token:    ${TOKEN_TYPE}`);
-  console.log(`  Test URL: ${TEST_ENDPOINT_URL}`);
+  // Initialize wallet - account 1 (for transfer testing)
+  const { address: address2, key: key2 } = await deriveChildAccount(network, X402_CLIENT_PK, 1);
+
+  const x402Client2 = new X402PaymentClient({
+    network,
+    privateKey: key2,
+  });
+
+  console.log(`  Account 0: ${address}`);
+  console.log(`  Account 1: ${address2}`);
+  console.log(`  Network:   ${network}`);
+  console.log(`  Server:    ${X402_WORKER_URL}`);
+  console.log(`  Token:     ${TOKEN_TYPE}`);
+  console.log(`  Test URL:  ${TEST_ENDPOINT_URL}`);
   console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
 
   const ctx: TestContext = {
@@ -642,6 +691,9 @@ async function main() {
     ownerAddress: address,
     privateKey: key,
     network,
+    account2Address: address2,
+    account2PrivateKey: key2,
+    account2Client: x402Client2,
   };
 
   const results: Array<{ name: string; passed: boolean }> = [];
@@ -667,6 +719,10 @@ async function main() {
       results.push({ name: "My Endpoints", passed: await testMyEndpoints(ctx) });
       await sleep(500);
 
+      results.push({ name: "Transfer", passed: await testTransfer(ctx) });
+      await sleep(500);
+
+      // Delete is now done by account2 (new owner after transfer)
       results.push({ name: "Delete", passed: await testDelete(ctx) });
     }
   } finally {
