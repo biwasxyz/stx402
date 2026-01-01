@@ -14,7 +14,7 @@ import {
   createActionMessage,
   isTimestampValid,
 } from "../utils/signatures";
-import { getPayerFromContext } from "../utils/payment";
+import { extractSenderFromSignedTx, type ExtendedSettleResult } from "../utils/payment";
 
 export class RegistryUpdate extends BaseEndpoint {
   schema = {
@@ -225,10 +225,23 @@ export class RegistryUpdate extends BaseEndpoint {
 
     // Try payment auth if no signature
     if (!authMethod) {
-      const paymentResponseHeader = c.req.header("X-PAYMENT-RESPONSE");
-      const paymentHeader = c.req.header("X-PAYMENT");
+      // Get settle result and signed tx from context (set by middleware)
+      const settleResult = c.get("settleResult") as ExtendedSettleResult | undefined;
+      const signedTx = c.get("signedTx") as string | undefined;
 
-      const payerAddress = getPayerFromContext(paymentResponseHeader || null, paymentHeader || null);
+      let payerAddress: string | null = null;
+
+      // Try from settle result first (has facilitator data)
+      if (settleResult?.senderAddress) {
+        payerAddress = settleResult.senderAddress;
+      } else if (settleResult?.sender_address) {
+        payerAddress = settleResult.sender_address;
+      }
+
+      // Fallback to extracting from the signed tx
+      if (!payerAddress && signedTx) {
+        payerAddress = extractSenderFromSignedTx(signedTx);
+      }
 
       if (payerAddress && payerAddress === ownerAddress) {
         authMethod = "payment";

@@ -443,31 +443,47 @@ async function signChallenge(
   challengeData: { message: string; domain: string },
   privateKey: string
 ): Promise<string> {
-  const SIP018_PREFIX = hexToBytes("534950303138"); // "SIP018" in hex
+  try {
+    const SIP018_PREFIX = hexToBytes("534950303138"); // "SIP018" in hex
 
-  const domainHex = challengeData.domain;
-  const messageHex = challengeData.message;
+    const domainHex = challengeData.domain;
+    const messageHex = challengeData.message;
 
-  const domainBytes = hexToBytes(domainHex.startsWith("0x") ? domainHex.slice(2) : domainHex);
-  const messageBytes = hexToBytes(messageHex.startsWith("0x") ? messageHex.slice(2) : messageHex);
+    log("Signing challenge with domain:", domainHex.substring(0, 40) + "...");
+    log("Message:", messageHex.substring(0, 40) + "...");
 
-  const domainHash = sha256(domainBytes);
-  const messageHash = sha256(messageBytes);
+    const domainBytes = hexToBytes(domainHex.startsWith("0x") ? domainHex.slice(2) : domainHex);
+    const messageBytes = hexToBytes(messageHex.startsWith("0x") ? messageHex.slice(2) : messageHex);
 
-  const combined = new Uint8Array(SIP018_PREFIX.length + domainHash.length + messageHash.length);
-  combined.set(SIP018_PREFIX, 0);
-  combined.set(domainHash, SIP018_PREFIX.length);
-  combined.set(messageHash, SIP018_PREFIX.length + domainHash.length);
+    const domainHash = sha256(domainBytes);
+    const messageHash = sha256(messageBytes);
 
-  const finalHash = sha256(combined);
+    const combined = new Uint8Array(SIP018_PREFIX.length + domainHash.length + messageHash.length);
+    combined.set(SIP018_PREFIX, 0);
+    combined.set(domainHash, SIP018_PREFIX.length);
+    combined.set(messageHash, SIP018_PREFIX.length + domainHash.length);
 
-  const { signMessageHashRsv } = await import("@stacks/transactions");
-  const signature = signMessageHashRsv({
-    privateKey,
-    messageHash: bytesToHex(finalHash),
-  });
+    const finalHash = sha256(combined);
+    const messageHashHex = bytesToHex(finalHash);
 
-  return signature.data;
+    log("Final message hash:", messageHashHex.substring(0, 20) + "...");
+
+    const { signMessageHashRsv } = await import("@stacks/transactions");
+    const signature = signMessageHashRsv({
+      privateKey,
+      messageHash: messageHashHex,
+    });
+
+    if (!signature || !signature.data) {
+      throw new Error("signMessageHashRsv returned invalid result");
+    }
+
+    log("Generated signature:", signature.data.substring(0, 20) + "...");
+    return signature.data;
+  } catch (error) {
+    console.error("signChallenge error:", error);
+    throw error;
+  }
 }
 
 async function testTransfer(ctx: TestContext): Promise<boolean> {
@@ -511,21 +527,28 @@ async function testTransfer(ctx: TestContext): Promise<boolean> {
 
     // Step 2: Sign the challenge with account 0's key (current owner)
     const signature = await signChallenge(challenge.challenge, ctx.privateKey);
-    log("Signed challenge, submitting transfer...");
+    log("Signed challenge, signature length:", signature?.length);
+    log("Submitting transfer with challengeId:", challenge.challenge.challengeId);
 
     // Step 3: Submit transfer with signature
+    const transferBody = {
+      url: TEST_ENDPOINT_URL,
+      owner: ctx.ownerAddress,
+      newOwner: ctx.account2Address,
+      signature,
+      challengeId: challenge.challenge.challengeId,
+    };
+    log("Transfer body:", JSON.stringify(transferBody).substring(0, 200) + "...");
+
     const { status: transferStatus, data: transferData } = await makeX402Request(
       "/api/registry/transfer",
       "POST",
       ctx.x402Client,
-      {
-        url: TEST_ENDPOINT_URL,
-        owner: ctx.ownerAddress,
-        newOwner: ctx.account2Address,
-        signature,
-        challengeId: challenge.challenge.challengeId,
-      }
+      transferBody
     );
+
+    log("Transfer response status:", transferStatus);
+    log("Transfer response:", JSON.stringify(transferData).substring(0, 200) + "...");
 
     if (transferStatus !== 200) {
       logError(`Transfer failed: ${transferStatus} ${JSON.stringify(transferData)}`);
@@ -533,10 +556,17 @@ async function testTransfer(ctx: TestContext): Promise<boolean> {
     }
 
     const result = transferData as {
-      success: boolean;
+      success?: boolean;
+      requiresSignature?: boolean;
       transferred?: { from: string; to: string };
       verifiedBy?: string;
     };
+
+    // Check if we got another challenge instead of success
+    if (result.requiresSignature) {
+      logError(`Server returned another challenge instead of processing signature`);
+      return false;
+    }
 
     if (!result.success) {
       logError(`Transfer not successful: ${JSON.stringify(transferData)}`);

@@ -289,11 +289,15 @@ export const x402PaymentMiddleware = () => {
       return c.json(errorResponse, classified.httpStatus as 400 | 402 | 500 | 502 | 503);
     }
 
-    // Add X-PAYMENT-RESPONSE header
+    // Add X-PAYMENT-RESPONSE header (for external clients)
     c.header(
       "X-PAYMENT-RESPONSE",
       JSON.stringify(settleResult, replaceBigintWithString)
     );
+
+    // Store settle result in context for endpoint access
+    c.set("settleResult", settleResult);
+    c.set("signedTx", signedTx);
 
     return next();
   };
