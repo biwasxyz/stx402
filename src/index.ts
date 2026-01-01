@@ -130,6 +130,10 @@ import { UtilVerifySignature } from "./endpoints/utilVerifySignature";
 // Network endpoints
 import { NetGeoIp } from "./endpoints/netGeoIp";
 import { NetAsnLookup } from "./endpoints/netAsnLookup";
+import { NetRequestFingerprint } from "./endpoints/netRequestFingerprint";
+import { NetHttpProbe } from "./endpoints/netHttpProbe";
+import { NetCorsProxy } from "./endpoints/netCorsProxy";
+import { NetSslCheck } from "./endpoints/netSslCheck";
 
 // Registry endpoints
 import { RegistryProbe } from "./endpoints/registryProbe";
@@ -315,6 +319,10 @@ openapi.post("/api/util/verify-signature", paymentMiddleware, trackMetrics, Util
 // Network endpoints (paid)
 openapi.get("/api/net/geo-ip", paymentMiddleware, trackMetrics, NetGeoIp as any);
 openapi.get("/api/net/asn-lookup", paymentMiddleware, trackMetrics, NetAsnLookup as any);
+openapi.get("/api/net/request-fingerprint", paymentMiddleware, trackMetrics, NetRequestFingerprint as any);
+openapi.post("/api/net/http-probe", paymentMiddleware, trackMetrics, NetHttpProbe as any);
+openapi.post("/api/net/cors-proxy", paymentMiddleware, trackMetrics, NetCorsProxy as any);
+openapi.post("/api/net/ssl-check", paymentMiddleware, trackMetrics, NetSslCheck as any);
 
 // Registry endpoints
 openapi.post("/api/registry/probe", paymentMiddleware, trackMetrics, RegistryProbe as any);

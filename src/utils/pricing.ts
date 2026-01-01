@@ -128,9 +128,13 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/admin/registry/verify": "ai",
   "/api/admin/registry/pending": "ai",
 
-  // === NETWORK ENDPOINTS (2) ===
+  // === NETWORK ENDPOINTS (6) ===
   "/api/net/geo-ip": "simple",
   "/api/net/asn-lookup": "simple",
+  "/api/net/request-fingerprint": "simple",
+  "/api/net/http-probe": "simple",
+  "/api/net/cors-proxy": "simple",
+  "/api/net/ssl-check": "simple",
 
   // === UTILITY ENDPOINTS (23) ===
   "/api/util/timestamp": "simple",
