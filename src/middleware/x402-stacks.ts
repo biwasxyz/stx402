@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { X402PaymentVerifier, getDefaultSBTCContract, getDefaultUSDCxContract } from "x402-stacks";
+import { X402PaymentVerifier } from "x402-stacks";
 import type { TokenContract } from "x402-stacks";
 import { replaceBigintWithString } from "../utils/bigint";
 import {
@@ -10,6 +10,18 @@ import {
   type PricingTier,
   validateTokenType,
 } from "../utils/pricing";
+
+// Correct mainnet token contracts (x402-stacks has outdated sBTC address)
+const TOKEN_CONTRACTS: Record<"mainnet" | "testnet", Record<"sBTC" | "USDCx", TokenContract>> = {
+  mainnet: {
+    sBTC: { address: "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4", name: "sbtc-token" },
+    USDCx: { address: "SP120SBRBQJ00MCWS7TM5R8WJNTTKD5K0HFRC2CNE", name: "usdcx" },
+  },
+  testnet: {
+    sBTC: { address: "ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT", name: "sbtc-token" },
+    USDCx: { address: "ST1NXBK3K5YYMD6FD41MVNP3JS1GABZ8TRVX023PT", name: "usdcx" },
+  },
+};
 
 export interface X402PaymentRequired {
   maxAmountRequired: string;
@@ -207,10 +219,8 @@ export const x402PaymentMiddleware = () => {
     if (!signedTx) {
       // Get token contract for sBTC/USDCx (required for SIP-010 transfers)
       let tokenContract: TokenContract | undefined;
-      if (tokenType === "sBTC") {
-        tokenContract = getDefaultSBTCContract(config.network);
-      } else if (tokenType === "USDCx") {
-        tokenContract = getDefaultUSDCxContract(config.network);
+      if (tokenType === "sBTC" || tokenType === "USDCx") {
+        tokenContract = TOKEN_CONTRACTS[config.network][tokenType];
       }
 
       // Respond 402 with payment request
