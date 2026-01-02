@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-STX402 is a Cloudflare Workers API providing **100 useful endpoints** via X402 micropayments.
+STX402 is a Cloudflare Workers API providing **100+ useful endpoints** via X402 micropayments.
 
 **Vision**: A marketplace of useful API endpoints where the best ones surface to the top based on usage and earnings. Each endpoint is simple, composable, and pays for itself through micropayments.
 
@@ -31,19 +31,21 @@ bun run tests/get-bns-address.test.ts
 
 ## Architecture
 
-### Endpoint Categories (100 total)
+### Endpoint Categories (116 total)
 
 | Category | Count | Path Pattern | Tier | Description |
 |----------|-------|--------------|------|-------------|
 | Health | 2 | `/api/health`, `/dashboard` | free | Monitoring endpoints |
 | Stacks | 15 | `/api/stacks/*` | simple | Blockchain queries, Clarity utilities |
 | AI | 13 | `/api/ai/*` | ai/heavy_ai | AI-powered analysis and generation |
-| Text | 25 | `/api/text/*` | simple | Encoding, hashing, transformation |
+| Text | 24 | `/api/text/*` | simple | Encoding, hashing, transformation |
 | Data | 8 | `/api/data/*` | simple | JSON/CSV processing |
 | Crypto | 2 | `/api/crypto/*` | simple | Cryptographic operations |
 | Random | 7 | `/api/random/*` | simple | Secure random generation |
 | Math | 6 | `/api/math/*` | simple | Mathematical operations |
-| Utility | 22 | `/api/util/*` | simple | General utilities |
+| Utility | 23 | `/api/util/*` | simple | General utilities |
+| Network | 6 | `/api/net/*` | simple | Network utilities |
+| Registry | 10 | `/api/registry/*` | ai | Endpoint registry management |
 
 ### Pricing Tiers
 
@@ -104,6 +106,8 @@ export class MyEndpoint extends BaseEndpoint {
 - `src/endpoints/random*.ts` - Secure random (UUID, numbers, strings, passwords)
 - `src/endpoints/math*.ts` - Calculate, statistics, prime check, factorial
 - `src/endpoints/util*.ts` - Timestamps, DNS, QR codes, URL parsing, etc.
+- `src/endpoints/net*.ts` - Network utilities (geo-IP, ASN, SSL checks)
+- `src/endpoints/registry*.ts` - Endpoint registry management
 
 **Middleware:**
 - `src/middleware/x402-stacks.ts` - X402 payment verification/settlement

@@ -24,7 +24,7 @@ export const TIER_AMOUNTS: Record<PricingTier, Record<TokenType, string>> = {
   },
 };
 
-// Endpoint path to pricing tier mapping (98 paid endpoints + 2 free = 100 total)
+// Endpoint path to pricing tier mapping (113 paid endpoints + 3 free = 116 total)
 export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   // === STACKS ENDPOINTS (15) ===
   "/api/stacks/get-bns-name": "simple",

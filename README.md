@@ -1,6 +1,6 @@
 # STX402
 
-Cloudflare Worker API providing **100 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
+Cloudflare Worker API providing **100+ useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
 
 ## Payment
 
@@ -61,7 +61,7 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `POST` | `/api/ai/grammar-check` | ai | Grammar checking |
 | `POST` | `/api/ai/question-answer` | ai | Question answering |
 
-### Text (25 endpoints)
+### Text (24 endpoints)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -80,7 +80,6 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `POST` | `/api/text/hex-encode` | Hex encode |
 | `POST` | `/api/text/hex-decode` | Hex decode |
 | `POST` | `/api/text/case-convert` | Case conversion |
-| `POST` | `/api/text/slug` | URL slug generation |
 | `POST` | `/api/text/word-count` | Word/char statistics |
 | `POST` | `/api/text/reverse` | Reverse text |
 | `POST` | `/api/text/truncate` | Smart truncation |
@@ -89,7 +88,7 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `GET` | `/api/text/lorem-ipsum` | Lorem ipsum generator |
 | `GET` | `/api/text/validate-url` | URL validation |
 | `POST` | `/api/text/diff` | Text comparison |
-| `GET` | `/api/text/unicode-info` | Unicode character info |
+| `POST` | `/api/text/unicode-info` | Unicode character info |
 
 ### Data (8 endpoints)
 
@@ -134,7 +133,7 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `POST` | `/api/math/gcd-lcm` | GCD/LCM calculation |
 | `GET` | `/api/math/factorial` | Factorial |
 
-### Utility (22 endpoints)
+### Utility (23 endpoints)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -160,6 +159,18 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `GET` | `/api/util/mime-type` | MIME type lookup |
 | `POST` | `/api/util/regex-escape` | Regex escape |
 | `POST` | `/api/util/string-distance` | String similarity |
+| `POST` | `/api/util/verify-signature` | Stacks signature verification |
+
+### Network (6 endpoints)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/net/geo-ip` | IP geolocation |
+| `GET` | `/api/net/asn-lookup` | ASN lookup |
+| `GET` | `/api/net/request-fingerprint` | Request fingerprinting |
+| `POST` | `/api/net/http-probe` | HTTP endpoint probing |
+| `POST` | `/api/net/cors-proxy` | CORS proxy |
+| `POST` | `/api/net/ssl-check` | SSL certificate check |
 
 ## Project Structure
 

@@ -293,7 +293,7 @@ const aiEndpoints: TestConfig[] = [
 ];
 
 // =============================================================================
-// TEXT ENDPOINTS (25)
+// TEXT ENDPOINTS (24)
 // =============================================================================
 
 const textEndpoints: TestConfig[] = [
@@ -437,16 +437,6 @@ const textEndpoints: TestConfig[] = [
     validateResponse: (data, tokenType) => {
       const d = data as { converted: string; tokenType: TokenType };
       return d.converted === "HELLO WORLD" && d.tokenType === tokenType;
-    },
-  },
-  {
-    name: "slug",
-    endpoint: "/api/text/slug",
-    method: "POST",
-    body: { text: "Hello World!" },
-    validateResponse: (data, tokenType) => {
-      const d = data as { slug: string; tokenType: TokenType };
-      return d.slug === "hello-world" && d.tokenType === tokenType;
     },
   },
   {
@@ -1007,10 +997,10 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
 
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
-  total: ENDPOINT_REGISTRY.length, // Should be 99 (98 + verify-signature)
+  total: ENDPOINT_REGISTRY.length, // Should be 98 (97 + verify-signature)
   stacks: stacksEndpoints.length,  // 15
   ai: aiEndpoints.length,          // 13
-  text: textEndpoints.length,      // 25
+  text: textEndpoints.length,      // 24
   data: dataEndpoints.length,      // 8
   crypto: cryptoEndpoints.length,  // 2
   random: randomEndpoints.length,  // 7
