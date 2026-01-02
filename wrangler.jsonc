@@ -26,6 +26,11 @@
       "binding": "METRICS",
       "id": "fc344acd7f724b2a85ad0c961e9eb5a4",
       "preview_id": "f17f2a7478934003adcc7afc1a8418f4"
+    },
+    {
+      "binding": "STORAGE",
+      "id": "a93080d37b764914b09fbcb7c25bf7c5",
+      "preview_id": "39d50116da4643c3b47a6be2b5805bf9"
     }
   ],
   "vars": {

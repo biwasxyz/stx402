@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-STX402 is a Cloudflare Workers API providing **100+ useful endpoints** via X402 micropayments.
+STX402 is a Cloudflare Workers API providing **120 useful endpoints** via X402 micropayments.
 
 **Vision**: A marketplace of useful API endpoints where the best ones surface to the top based on usage and earnings. Each endpoint is simple, composable, and pays for itself through micropayments.
 
@@ -31,7 +31,7 @@ bun run tests/get-bns-address.test.ts
 
 ## Architecture
 
-### Endpoint Categories (116 total)
+### Endpoint Categories (120 total)
 
 | Category | Count | Path Pattern | Tier | Description |
 |----------|-------|--------------|------|-------------|
@@ -46,6 +46,7 @@ bun run tests/get-bns-address.test.ts
 | Utility | 23 | `/api/util/*` | simple | General utilities |
 | Network | 6 | `/api/net/*` | simple | Network utilities |
 | Registry | 10 | `/api/registry/*` | ai | Endpoint registry management |
+| KV Storage | 4 | `/api/kv/*` | storage_* | Stateful key-value storage |
 
 ### Pricing Tiers
 
@@ -56,6 +57,10 @@ Defined in `src/utils/pricing.ts`:
 | `simple` | 0.001 | 0.000001 | 0.001 | Fast utilities, no external calls |
 | `ai` | 0.003 | 0.000003 | 0.003 | Light AI inference |
 | `heavy_ai` | 0.01 | 0.00001 | 0.01 | Image generation, heavy compute |
+| `storage_read` | 0.0005 | 0.0000005 | 0.0005 | KV get, list operations |
+| `storage_write` | 0.001 | 0.000001 | 0.001 | KV set, delete operations |
+| `storage_write_large` | 0.005 | 0.000005 | 0.005 | Values > 100KB |
+| `storage_ai` | 0.003 | 0.000003 | 0.003 | Semantic search (future) |
 
 ### Endpoint Pattern
 
@@ -97,7 +102,7 @@ export class MyEndpoint extends BaseEndpoint {
 ### Key Files
 
 **Endpoints:**
-- `src/endpoints/BaseEndpoint.ts` - Shared methods: `getTokenType()`, `validateAddress()`, `errorResponse()`
+- `src/endpoints/BaseEndpoint.ts` - Shared methods: `getTokenType()`, `getPayerAddress()`, `validateAddress()`, `errorResponse()`
 - `src/endpoints/stacks*.ts` - Stacks/Clarity endpoints (BNS, contracts, consensus buffers)
 - `src/endpoints/ai*.ts` - AI endpoints (summarize, TTS, image generation, contract analysis)
 - `src/endpoints/text*.ts` - Hashing (SHA, Keccak, Hash160), encoding (base64, URL, hex)
@@ -108,6 +113,7 @@ export class MyEndpoint extends BaseEndpoint {
 - `src/endpoints/util*.ts` - Timestamps, DNS, QR codes, URL parsing, etc.
 - `src/endpoints/net*.ts` - Network utilities (geo-IP, ASN, SSL checks)
 - `src/endpoints/registry*.ts` - Endpoint registry management
+- `src/endpoints/kv/*.ts` - KV storage endpoints (set, get, delete, list)
 
 **Middleware:**
 - `src/middleware/x402-stacks.ts` - X402 payment verification/settlement
@@ -115,6 +121,7 @@ export class MyEndpoint extends BaseEndpoint {
 
 **Utilities:**
 - `src/utils/pricing.ts` - Tier definitions and `ENDPOINT_TIERS` mapping
+- `src/utils/namespace.ts` - KV key formatting, validation, limits
 - `src/utils/network.ts` - Network detection from address prefix
 - `src/utils/bns.ts` - BNS contract queries
 - `src/utils/clarity.ts` - Clarity value decoder
@@ -143,6 +150,7 @@ Configured in `wrangler.jsonc`:
 
 KV Namespaces:
 - `METRICS` - Usage tracking (calls, earnings, latency)
+- `STORAGE` - User key-value storage (namespaced by payer address)
 
 AI Bindings:
 - `AI` - Cloudflare Workers AI

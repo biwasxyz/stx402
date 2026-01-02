@@ -1,6 +1,6 @@
 # STX402
 
-Cloudflare Worker API providing **100+ useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
+Cloudflare Worker API providing **120 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
 
 ## Payment
 
@@ -11,6 +11,9 @@ All paid endpoints require X402 micropayments. Supports `?tokenType=STX|sBTC|USD
 | Simple | 0.001 | 0.000001 | 0.001 | Utilities, encoding, hashing |
 | AI | 0.003 | 0.000003 | 0.003 | Text analysis, summarization |
 | Heavy AI | 0.01 | 0.00001 | 0.01 | Image generation, TTS |
+| Storage Read | 0.0005 | 0.0000005 | 0.0005 | KV get, list operations |
+| Storage Write | 0.001 | 0.000001 | 0.001 | KV set, delete operations |
+| Storage Large | 0.005 | 0.000005 | 0.005 | Values > 100KB |
 
 ## Endpoints
 
@@ -172,12 +175,30 @@ OpenAPI docs: `GET /` | Dashboard: `GET /dashboard`
 | `POST` | `/api/net/cors-proxy` | CORS proxy |
 | `POST` | `/api/net/ssl-check` | SSL certificate check |
 
+### KV Storage (4 endpoints)
+
+Stateful key-value storage with TTL support. Keys are namespaced by payer address for automatic isolation.
+
+| Method | Path | Tier | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/kv/set` | storage_write | Store value with optional TTL |
+| `POST` | `/api/kv/get` | storage_read | Retrieve value by key |
+| `POST` | `/api/kv/delete` | storage_write | Delete value by key |
+| `POST` | `/api/kv/list` | storage_read | List keys by prefix |
+
+**Features:**
+- Automatic namespace isolation by payer address
+- Public/private visibility options
+- TTL support (60s minimum, default 24h)
+- Value size up to 25MB (large tier pricing for > 100KB)
+- Prefix-based listing with pagination
+
 ## Project Structure
 
 ```
 src/
 ├── endpoints/          # OpenAPIRoute classes (one per endpoint)
-│   ├── BaseEndpoint.ts # Shared methods
+│   ├── BaseEndpoint.ts # Shared methods (getTokenType, getPayerAddress, etc.)
 │   ├── stacks*.ts      # Stacks/Clarity endpoints
 │   ├── ai*.ts          # AI-powered endpoints
 │   ├── crypto*.ts      # Cryptographic endpoints
@@ -185,11 +206,18 @@ src/
 │   ├── math*.ts        # Math operations
 │   ├── random*.ts      # Random generation
 │   ├── text*.ts        # Text/encoding utilities
-│   └── util*.ts        # General utilities
+│   ├── util*.ts        # General utilities
+│   └── kv/             # KV storage endpoints
+│       ├── kvSet.ts    # Store values
+│       ├── kvGet.ts    # Retrieve values
+│       ├── kvDelete.ts # Delete values
+│       └── kvList.ts   # List keys
 ├── middleware/
 │   ├── x402-stacks.ts  # X402 payment verification
 │   └── metrics.ts      # Usage tracking (KV)
-├── utils/              # Shared utilities
+├── utils/
+│   ├── namespace.ts    # KV key formatting utilities
+│   └── pricing.ts      # Pricing tiers and amounts
 └── index.ts            # Hono app + route registration
 ```
 

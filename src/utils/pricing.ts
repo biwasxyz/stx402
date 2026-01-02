@@ -3,7 +3,14 @@ import { BTCtoSats, STXtoMicroSTX, USDCxToMicroUSDCx } from "x402-stacks";
 export type TokenType = "STX" | "sBTC" | "USDCx";
 
 // Pricing tiers for different endpoint categories
-export type PricingTier = "simple" | "ai" | "heavy_ai";
+export type PricingTier =
+  | "simple"
+  | "ai"
+  | "heavy_ai"
+  | "storage_read"
+  | "storage_write"
+  | "storage_write_large"
+  | "storage_ai";
 
 // Amount per tier per token type
 export const TIER_AMOUNTS: Record<PricingTier, Record<TokenType, string>> = {
@@ -22,9 +29,30 @@ export const TIER_AMOUNTS: Record<PricingTier, Record<TokenType, string>> = {
     sBTC: "0.00001",
     USDCx: "0.01",
   },
+  // Storage tiers - for stateful KV and Durable Object endpoints
+  storage_read: {
+    STX: "0.0005",
+    sBTC: "0.0000005",
+    USDCx: "0.0005",
+  },
+  storage_write: {
+    STX: "0.001",
+    sBTC: "0.000001",
+    USDCx: "0.001",
+  },
+  storage_write_large: {
+    STX: "0.005",
+    sBTC: "0.000005",
+    USDCx: "0.005",
+  },
+  storage_ai: {
+    STX: "0.003",
+    sBTC: "0.000003",
+    USDCx: "0.003",
+  },
 };
 
-// Endpoint path to pricing tier mapping (113 paid endpoints + 3 free = 116 total)
+// Endpoint path to pricing tier mapping (117 paid endpoints + 3 free = 120 total)
 export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   // === STACKS ENDPOINTS (15) ===
   "/api/stacks/get-bns-name": "simple",
@@ -159,6 +187,12 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/util/regex-escape": "simple",
   "/api/util/string-distance": "simple",
   "/api/util/verify-signature": "simple",
+
+  // === KV STORAGE ENDPOINTS (4) ===
+  "/api/kv/set": "storage_write",
+  "/api/kv/get": "storage_read",
+  "/api/kv/delete": "storage_write",
+  "/api/kv/list": "storage_read",
 };
 
 // Get pricing tier for an endpoint path (strips path params like :address)

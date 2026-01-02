@@ -146,6 +146,9 @@ import { RegistryAdminPending } from "./endpoints/registryAdminPending";
 import { RegistryMyEndpoints } from "./endpoints/registryMyEndpoints";
 import { RegistryTransfer } from "./endpoints/registryTransfer";
 
+// KV Storage endpoints
+import { KvSet, KvGet, KvDelete, KvList } from "./endpoints/kv";
+
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 import { metricsMiddleware } from "./middleware/metrics";
 
@@ -333,6 +336,12 @@ openapi.post("/api/registry/my-endpoints", paymentMiddleware, trackMetrics, Regi
 openapi.post("/api/registry/transfer", paymentMiddleware, trackMetrics, RegistryTransfer as any);
 openapi.post("/api/admin/registry/verify", paymentMiddleware, trackMetrics, RegistryAdminVerify as any);
 openapi.post("/api/admin/registry/pending", paymentMiddleware, trackMetrics, RegistryAdminPending as any);
+
+// KV Storage endpoints (paid)
+openapi.post("/api/kv/set", paymentMiddleware, trackMetrics, KvSet as any);
+openapi.post("/api/kv/get", paymentMiddleware, trackMetrics, KvGet as any);
+openapi.post("/api/kv/delete", paymentMiddleware, trackMetrics, KvDelete as any);
+openapi.post("/api/kv/list", paymentMiddleware, trackMetrics, KvList as any);
 
 // Export the Hono app
 export default app;

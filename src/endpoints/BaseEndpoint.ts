@@ -3,6 +3,7 @@ import { Address } from "@stacks/transactions";
 import { validateTokenType } from "../utils/pricing";
 import type { AppContext } from "../types";
 import { ContentfulStatusCode } from "hono/utils/http-status";
+import type { SettlePaymentResult } from "../middleware/x402-stacks";
 
 export class BaseEndpoint extends OpenAPIRoute {
   protected getTokenType(c: AppContext): string {
@@ -19,6 +20,15 @@ export class BaseEndpoint extends OpenAPIRoute {
       console.error(String(e));
       return null;
     }
+  }
+
+  /**
+   * Get the payer's address from the payment settlement result
+   * This is set by the x402 middleware after successful payment verification
+   */
+  protected getPayerAddress(c: AppContext): string | null {
+    const settleResult = c.get("settleResult") as SettlePaymentResult | undefined;
+    return settleResult?.sender ?? null;
   }
 
   protected errorResponse(
