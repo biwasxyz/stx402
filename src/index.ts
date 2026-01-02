@@ -174,6 +174,15 @@ import {
   LinksList,
 } from "./endpoints/links";
 
+// Sync endpoints (Durable Objects - Distributed Locks)
+import {
+  SyncLock,
+  SyncUnlock,
+  SyncCheck,
+  SyncExtend,
+  SyncList,
+} from "./endpoints/sync";
+
 // Durable Objects
 export { UserDurableObject } from "./durable-objects/UserDurableObject";
 
@@ -395,6 +404,13 @@ openapi.get("/api/links/expand/:slug", LinksExpand as any); // Free expand (trac
 openapi.post("/api/links/stats", paymentMiddleware, trackMetrics, LinksStats as any);
 openapi.post("/api/links/delete", paymentMiddleware, trackMetrics, LinksDelete as any);
 openapi.get("/api/links/list", paymentMiddleware, trackMetrics, LinksList as any);
+
+// Sync endpoints (paid - Durable Objects Distributed Locks)
+openapi.post("/api/sync/lock", paymentMiddleware, trackMetrics, SyncLock as any);
+openapi.post("/api/sync/unlock", paymentMiddleware, trackMetrics, SyncUnlock as any);
+openapi.post("/api/sync/check", paymentMiddleware, trackMetrics, SyncCheck as any);
+openapi.post("/api/sync/extend", paymentMiddleware, trackMetrics, SyncExtend as any);
+openapi.get("/api/sync/list", paymentMiddleware, trackMetrics, SyncList as any);
 
 // Export the Hono app
 export default app;

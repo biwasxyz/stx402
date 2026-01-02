@@ -271,7 +271,7 @@ function getStorageWriteTier(valueSize: number): PricingTier {
 
 ---
 
-### Phase 5: Distributed Locks (4 endpoints)
+### Phase 5: Distributed Locks (5 endpoints) ✅ COMPLETED
 **Category**: `/api/sync/*`
 
 | Endpoint | Method | Tier | Description |
@@ -521,12 +521,12 @@ src/
 | 2 | `/api/paste/*` | 3 | KV | ✅ Done |
 | 3 | `/api/counter/*` + `/api/sql/*` | 6+3=9 | DO | ✅ Done |
 | 4 | `/api/links/*` | 5 | DO | ✅ Done |
-| 5 | `/api/sync/*` | 4 | DO | Planned |
+| 5 | `/api/sync/*` | 5 | DO | ✅ Done |
 | 6 | `/api/queue/*` | 5 | DO | Planned |
 | 7 | `/api/memory/*` | 5 | KV+AI | Planned |
 
-**Completed**: 21 endpoints (Phases 1-4)
-**Current total**: 137 endpoints (116 original + 21 stateful)
+**Completed**: 26 endpoints (Phases 1-5)
+**Current total**: 142 endpoints (116 original + 26 stateful)
 
 ---
 

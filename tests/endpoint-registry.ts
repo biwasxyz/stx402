@@ -1356,6 +1356,53 @@ const linksEndpoints: TestConfig[] = [
 ];
 
 // =============================================================================
+// SYNC ENDPOINTS (5) - Durable Objects Distributed Locks
+// Note: These endpoints provide distributed locking with automatic expiration.
+// =============================================================================
+
+const syncEndpoints: TestConfig[] = [
+  {
+    name: "sync-lock",
+    endpoint: "/api/sync/lock",
+    method: "POST",
+    body: { name: "test-lock", ttl: 60 },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["acquired", "name"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "sync-unlock",
+    endpoint: "/api/sync/unlock",
+    method: "POST",
+    body: { name: "test-lock", token: "invalid-token" },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["released", "name"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "sync-check",
+    endpoint: "/api/sync/check",
+    method: "POST",
+    body: { name: "test-lock" },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["name", "locked"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "sync-extend",
+    endpoint: "/api/sync/extend",
+    method: "POST",
+    body: { name: "test-lock", token: "invalid-token", ttl: 60 },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["extended", "name"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "sync-list",
+    endpoint: "/api/sync/list",
+    method: "GET",
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["locks", "count"]) && hasTokenType(data, tokenType),
+  },
+];
+
+// =============================================================================
 // EXPORT COMBINED REGISTRY
 // =============================================================================
 
@@ -1375,6 +1422,7 @@ export const ENDPOINT_REGISTRY: TestConfig[] = [
   ...counterEndpoints,
   ...sqlEndpoints,
   ...linksEndpoints,
+  ...syncEndpoints,
 ];
 
 // Category mapping for filtered runs
@@ -1394,11 +1442,12 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
   counter: counterEndpoints,
   sql: sqlEndpoints,
   links: linksEndpoints,
+  sync: syncEndpoints,
 };
 
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
-  total: ENDPOINT_REGISTRY.length, // 135 endpoints (133 paid + 2 free)
+  total: ENDPOINT_REGISTRY.length, // 140 endpoints (138 paid + 2 free)
   stacks: stacksEndpoints.length,  // 15
   ai: aiEndpoints.length,          // 13
   text: textEndpoints.length,      // 24
@@ -1414,4 +1463,5 @@ export const ENDPOINT_COUNTS = {
   counter: counterEndpoints.length, // 6
   sql: sqlEndpoints.length,        // 3
   links: linksEndpoints.length,    // 5
+  sync: syncEndpoints.length,      // 5
 };

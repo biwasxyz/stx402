@@ -4,7 +4,7 @@ import { DurableObject } from "cloudflare:workers";
  * UserDurableObject - Per-user SQLite-backed Durable Object
  *
  * Each payer address gets their own DO instance with isolated SQLite storage.
- * Provides counters, links, custom SQL queries, and other stateful operations.
+ * Provides counters, links, locks, custom SQL queries, and other stateful operations.
  *
  * Design principles (per Cloudflare best practices):
  * - Use SQLite for structured data (recommended over KV)
@@ -79,6 +79,21 @@ export class UserDurableObject extends DurableObject<Env> {
     // Index for efficient click queries
     this.sql.exec(`
       CREATE INDEX IF NOT EXISTS idx_link_clicks_slug ON link_clicks(slug)
+    `);
+
+    // Locks table for distributed locking
+    this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS locks (
+        name TEXT PRIMARY KEY,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        acquired_at TEXT NOT NULL
+      )
+    `);
+
+    // Index for efficient lock cleanup
+    this.sql.exec(`
+      CREATE INDEX IF NOT EXISTS idx_locks_expires ON locks(expires_at)
     `);
 
     this.initialized = true;
@@ -615,6 +630,229 @@ export class UserDurableObject extends DurableObject<Env> {
   }
 
   // ===========================================================================
+  // Lock Operations (Distributed Locking)
+  // ===========================================================================
+
+  /**
+   * Generate a random token for lock ownership
+   */
+  private generateLockToken(): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let token = "";
+    for (let i = 0; i < 32; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
+  }
+
+  /**
+   * Clean up expired locks
+   */
+  private cleanupExpiredLocks(): void {
+    const now = new Date().toISOString();
+    this.sql.exec("DELETE FROM locks WHERE expires_at < ?", now);
+  }
+
+  /**
+   * Acquire a named lock
+   * Returns token if acquired, null if lock is held by another
+   */
+  async lockAcquire(
+    name: string,
+    options?: { ttl?: number }
+  ): Promise<{
+    acquired: boolean;
+    token: string | null;
+    expiresAt: string | null;
+    heldUntil?: string;
+  }> {
+    this.initializeSchema();
+    this.cleanupExpiredLocks();
+
+    const now = new Date();
+    const ttl = Math.min(Math.max(options?.ttl ?? 60, 10), 300); // 10s min, 300s max, 60s default
+    const expiresAt = new Date(now.getTime() + ttl * 1000).toISOString();
+
+    // Check if lock exists and is not expired
+    const existing = this.sql
+      .exec("SELECT token, expires_at FROM locks WHERE name = ?", name)
+      .toArray();
+
+    if (existing.length > 0) {
+      const lock = existing[0];
+      const lockExpiresAt = lock.expires_at as string;
+
+      // Lock is still held
+      if (new Date(lockExpiresAt) > now) {
+        return {
+          acquired: false,
+          token: null,
+          expiresAt: null,
+          heldUntil: lockExpiresAt,
+        };
+      }
+
+      // Lock expired, delete it
+      this.sql.exec("DELETE FROM locks WHERE name = ?", name);
+    }
+
+    // Acquire the lock
+    const token = this.generateLockToken();
+    this.sql.exec(
+      `INSERT INTO locks (name, token, expires_at, acquired_at) VALUES (?, ?, ?, ?)`,
+      name,
+      token,
+      expiresAt,
+      now.toISOString()
+    );
+
+    return {
+      acquired: true,
+      token,
+      expiresAt,
+    };
+  }
+
+  /**
+   * Release a lock (requires matching token)
+   */
+  async lockRelease(
+    name: string,
+    token: string
+  ): Promise<{
+    released: boolean;
+    error?: string;
+  }> {
+    this.initializeSchema();
+
+    // Check if lock exists with matching token
+    const existing = this.sql
+      .exec("SELECT token FROM locks WHERE name = ?", name)
+      .toArray();
+
+    if (existing.length === 0) {
+      return { released: false, error: "Lock not found" };
+    }
+
+    const lock = existing[0];
+    if (lock.token !== token) {
+      return { released: false, error: "Invalid token" };
+    }
+
+    // Release the lock
+    this.sql.exec("DELETE FROM locks WHERE name = ? AND token = ?", name, token);
+
+    return { released: true };
+  }
+
+  /**
+   * Check the status of a lock
+   */
+  async lockCheck(name: string): Promise<{
+    locked: boolean;
+    expiresAt: string | null;
+    acquiredAt: string | null;
+  }> {
+    this.initializeSchema();
+    this.cleanupExpiredLocks();
+
+    const existing = this.sql
+      .exec("SELECT expires_at, acquired_at FROM locks WHERE name = ?", name)
+      .toArray();
+
+    if (existing.length === 0) {
+      return {
+        locked: false,
+        expiresAt: null,
+        acquiredAt: null,
+      };
+    }
+
+    const lock = existing[0];
+    return {
+      locked: true,
+      expiresAt: lock.expires_at as string,
+      acquiredAt: lock.acquired_at as string,
+    };
+  }
+
+  /**
+   * Extend a lock's TTL (requires matching token)
+   */
+  async lockExtend(
+    name: string,
+    token: string,
+    options?: { ttl?: number }
+  ): Promise<{
+    extended: boolean;
+    expiresAt: string | null;
+    error?: string;
+  }> {
+    this.initializeSchema();
+
+    // Check if lock exists with matching token
+    const existing = this.sql
+      .exec("SELECT token, expires_at FROM locks WHERE name = ?", name)
+      .toArray();
+
+    if (existing.length === 0) {
+      return { extended: false, expiresAt: null, error: "Lock not found" };
+    }
+
+    const lock = existing[0];
+    if (lock.token !== token) {
+      return { extended: false, expiresAt: null, error: "Invalid token" };
+    }
+
+    // Check if lock has already expired
+    if (new Date(lock.expires_at as string) < new Date()) {
+      // Clean up expired lock
+      this.sql.exec("DELETE FROM locks WHERE name = ?", name);
+      return { extended: false, expiresAt: null, error: "Lock has expired" };
+    }
+
+    // Extend the lock
+    const ttl = Math.min(Math.max(options?.ttl ?? 60, 10), 300);
+    const newExpiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+    this.sql.exec(
+      "UPDATE locks SET expires_at = ? WHERE name = ? AND token = ?",
+      newExpiresAt,
+      name,
+      token
+    );
+
+    return {
+      extended: true,
+      expiresAt: newExpiresAt,
+    };
+  }
+
+  /**
+   * List all active locks
+   */
+  async lockList(): Promise<
+    Array<{
+      name: string;
+      expiresAt: string;
+      acquiredAt: string;
+    }>
+  > {
+    this.initializeSchema();
+    this.cleanupExpiredLocks();
+
+    const results = this.sql
+      .exec("SELECT name, expires_at, acquired_at FROM locks ORDER BY acquired_at DESC")
+      .toArray();
+
+    return results.map((row) => ({
+      name: row.name as string,
+      expiresAt: row.expires_at as string,
+      acquiredAt: row.acquired_at as string,
+    }));
+  }
+
+  // ===========================================================================
   // SQL Query Operations
   // ===========================================================================
 
@@ -674,7 +912,7 @@ export class UserDurableObject extends DurableObject<Env> {
 
     // Security: Prevent modification of system tables
     const normalizedQuery = query.trim().toUpperCase();
-    const systemTables = ["COUNTERS", "USER_DATA", "LINKS", "LINK_CLICKS"];
+    const systemTables = ["COUNTERS", "USER_DATA", "LINKS", "LINK_CLICKS", "LOCKS"];
 
     for (const table of systemTables) {
       // Check if trying to DROP or ALTER system tables

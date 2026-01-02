@@ -1,6 +1,6 @@
 # STX402
 
-Cloudflare Worker API providing **137 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
+Cloudflare Worker API providing **142 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
 
 ## Payment
 
@@ -288,6 +288,24 @@ URL shortener with click tracking, backed by Durable Objects.
 - Title/metadata storage
 - Per-user isolation (by payer address)
 
+### Sync (5 endpoints)
+
+Distributed locking with automatic expiration, backed by Durable Objects.
+
+| Method | Path | Tier | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/sync/lock` | storage_write | Acquire named lock |
+| `POST` | `/api/sync/unlock` | storage_write | Release lock (requires token) |
+| `POST` | `/api/sync/check` | storage_read | Check lock status |
+| `POST` | `/api/sync/extend` | storage_write | Extend lock TTL |
+| `GET` | `/api/sync/list` | storage_read | List all active locks |
+
+**Features:**
+- Automatic expiration (10-300 seconds TTL)
+- Token-based release (prevents accidental unlocking)
+- Per-user isolation (by payer address)
+- Prevents deadlocks with mandatory expiration
+
 ## Project Structure
 
 ```
@@ -310,8 +328,10 @@ src/
 │   │   └── counter*.ts # increment, decrement, get, reset, list, delete
 │   ├── sql/            # SQL endpoints (Durable Objects)
 │   │   └── sql*.ts     # query, execute, schema
-│   └── links/          # URL shortener endpoints (Durable Objects)
-│       └── links*.ts   # create, expand, stats, delete, list
+│   ├── links/          # URL shortener endpoints (Durable Objects)
+│   │   └── links*.ts   # create, expand, stats, delete, list
+│   └── sync/           # Distributed locks (Durable Objects)
+│       └── sync*.ts    # lock, unlock, check, extend, list
 ├── durable-objects/
 │   └── UserDurableObject.ts  # Per-user SQLite-backed DO
 ├── middleware/
