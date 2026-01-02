@@ -52,7 +52,7 @@ export const TIER_AMOUNTS: Record<PricingTier, Record<TokenType, string>> = {
   },
 };
 
-// Endpoint path to pricing tier mapping (120 paid endpoints + 3 free = 123 total)
+// Endpoint path to pricing tier mapping (129 paid endpoints + 3 free = 132 total)
 export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   // === STACKS ENDPOINTS (15) ===
   "/api/stacks/get-bns-name": "simple",
@@ -198,6 +198,19 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/paste/create": "storage_write",
   "/api/paste": "storage_read", // GET /api/paste/:code
   "/api/paste/delete": "storage_write",
+
+  // === COUNTER ENDPOINTS (6) - Durable Objects ===
+  "/api/counter/increment": "storage_write",
+  "/api/counter/decrement": "storage_write",
+  "/api/counter/get": "storage_read",
+  "/api/counter/reset": "storage_write",
+  "/api/counter/list": "storage_read",
+  "/api/counter/delete": "storage_write",
+
+  // === SQL ENDPOINTS (3) - Durable Objects ===
+  "/api/sql/query": "storage_read",
+  "/api/sql/execute": "storage_write",
+  "/api/sql/schema": "storage_read",
 };
 
 // Get pricing tier for an endpoint path (strips path params like :address)

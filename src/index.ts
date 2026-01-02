@@ -152,6 +152,22 @@ import { KvSet, KvGet, KvDelete, KvList } from "./endpoints/kv";
 // Paste endpoints
 import { PasteCreate, PasteGet, PasteDelete } from "./endpoints/paste";
 
+// Counter endpoints (Durable Objects)
+import {
+  CounterIncrement,
+  CounterDecrement,
+  CounterGet,
+  CounterReset,
+  CounterList,
+  CounterDelete,
+} from "./endpoints/counter";
+
+// SQL endpoints (Durable Objects)
+import { SqlQuery, SqlExecute, SqlSchema } from "./endpoints/sql";
+
+// Durable Objects
+export { UserDurableObject } from "./durable-objects/UserDurableObject";
+
 import { x402PaymentMiddleware } from "./middleware/x402-stacks";
 import { metricsMiddleware } from "./middleware/metrics";
 
@@ -350,6 +366,19 @@ openapi.post("/api/kv/list", paymentMiddleware, trackMetrics, KvList as any);
 openapi.post("/api/paste/create", paymentMiddleware, trackMetrics, PasteCreate as any);
 openapi.get("/api/paste/:code", paymentMiddleware, trackMetrics, PasteGet as any);
 openapi.post("/api/paste/delete", paymentMiddleware, trackMetrics, PasteDelete as any);
+
+// Counter endpoints (paid - Durable Objects)
+openapi.post("/api/counter/increment", paymentMiddleware, trackMetrics, CounterIncrement as any);
+openapi.post("/api/counter/decrement", paymentMiddleware, trackMetrics, CounterDecrement as any);
+openapi.get("/api/counter/get", paymentMiddleware, trackMetrics, CounterGet as any);
+openapi.post("/api/counter/reset", paymentMiddleware, trackMetrics, CounterReset as any);
+openapi.get("/api/counter/list", paymentMiddleware, trackMetrics, CounterList as any);
+openapi.post("/api/counter/delete", paymentMiddleware, trackMetrics, CounterDelete as any);
+
+// SQL endpoints (paid - Durable Objects)
+openapi.post("/api/sql/query", paymentMiddleware, trackMetrics, SqlQuery as any);
+openapi.post("/api/sql/execute", paymentMiddleware, trackMetrics, SqlExecute as any);
+openapi.get("/api/sql/schema", paymentMiddleware, trackMetrics, SqlSchema as any);
 
 // Export the Hono app
 export default app;

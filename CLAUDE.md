@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-STX402 is a Cloudflare Workers API providing **123 useful endpoints** via X402 micropayments.
+STX402 is a Cloudflare Workers API providing **132 useful endpoints** via X402 micropayments.
 
 **Vision**: A marketplace of useful API endpoints where the best ones surface to the top based on usage and earnings. Each endpoint is simple, composable, and pays for itself through micropayments.
 
@@ -31,7 +31,7 @@ bun run tests/get-bns-address.test.ts
 
 ## Architecture
 
-### Endpoint Categories (123 total)
+### Endpoint Categories (132 total)
 
 | Category | Count | Path Pattern | Tier | Description |
 |----------|-------|--------------|------|-------------|
@@ -48,6 +48,8 @@ bun run tests/get-bns-address.test.ts
 | Registry | 10 | `/api/registry/*` | ai | Endpoint registry management |
 | KV Storage | 4 | `/api/kv/*` | storage_* | Stateful key-value storage |
 | Paste | 3 | `/api/paste/*` | storage_* | Text paste with short codes |
+| Counter | 6 | `/api/counter/*` | storage_* | Atomic counters (Durable Objects) |
+| SQL | 3 | `/api/sql/*` | storage_* | Direct SQLite access (Durable Objects) |
 
 ### Pricing Tiers
 
@@ -116,6 +118,11 @@ export class MyEndpoint extends BaseEndpoint {
 - `src/endpoints/registry*.ts` - Endpoint registry management
 - `src/endpoints/kv/*.ts` - KV storage endpoints (set, get, delete, list)
 - `src/endpoints/paste/*.ts` - Paste endpoints (create, get, delete)
+- `src/endpoints/counter/*.ts` - Atomic counter endpoints (increment, decrement, get, reset, list, delete)
+- `src/endpoints/sql/*.ts` - SQL query endpoints (query, execute, schema)
+
+**Durable Objects:**
+- `src/durable-objects/UserDurableObject.ts` - Per-user SQLite-backed DO (counters, custom SQL)
 
 **Middleware:**
 - `src/middleware/x402-stacks.ts` - X402 payment verification/settlement
@@ -153,6 +160,9 @@ Configured in `wrangler.jsonc`:
 KV Namespaces:
 - `METRICS` - Usage tracking (calls, earnings, latency)
 - `STORAGE` - User key-value storage (namespaced by payer address)
+
+Durable Objects:
+- `USER_DO` - Per-user SQLite-backed Durable Object (counters, SQL)
 
 AI Bindings:
 - `AI` - Cloudflare Workers AI

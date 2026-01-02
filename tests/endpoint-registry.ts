@@ -1056,6 +1056,93 @@ const pasteEndpoints: TestConfig[] = [
 ];
 
 // =============================================================================
+// COUNTER ENDPOINTS (6) - Durable Objects
+// Note: These endpoints are stateful. Each payer gets their own isolated DO.
+// =============================================================================
+
+const counterEndpoints: TestConfig[] = [
+  {
+    name: "counter-increment",
+    endpoint: "/api/counter/increment",
+    method: "POST",
+    body: { name: `test-counter-${Date.now()}`, step: 1 },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["name", "value", "previousValue"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "counter-decrement",
+    endpoint: "/api/counter/decrement",
+    method: "POST",
+    body: { name: `test-counter-${Date.now()}`, step: 1 },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["name", "value", "previousValue"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "counter-get",
+    endpoint: "/api/counter/get?name=nonexistent-counter",
+    method: "GET",
+    // Note: This will 404 if counter doesn't exist
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "counter-reset",
+    endpoint: "/api/counter/reset",
+    method: "POST",
+    body: { name: `test-counter-${Date.now()}`, resetTo: 0 },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["name", "value", "previousValue"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "counter-list",
+    endpoint: "/api/counter/list",
+    method: "GET",
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["counters", "count"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "counter-delete",
+    endpoint: "/api/counter/delete",
+    method: "POST",
+    body: { name: "nonexistent-counter" },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["deleted", "name"]) && hasTokenType(data, tokenType),
+  },
+];
+
+// =============================================================================
+// SQL ENDPOINTS (3) - Durable Objects
+// Note: These endpoints provide direct SQL access to user's DO database.
+// =============================================================================
+
+const sqlEndpoints: TestConfig[] = [
+  {
+    name: "sql-query",
+    endpoint: "/api/sql/query",
+    method: "POST",
+    body: { query: "SELECT 1 as test" },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["rows", "rowCount", "columns"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "sql-execute",
+    endpoint: "/api/sql/execute",
+    method: "POST",
+    body: { query: "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)" },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["success", "rowsAffected"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "sql-schema",
+    endpoint: "/api/sql/schema",
+    method: "GET",
+    validateResponse: (data, tokenType) =>
+      hasField(data, "tables") && hasTokenType(data, tokenType),
+  },
+];
+
+// =============================================================================
 // EXPORT COMBINED REGISTRY
 // =============================================================================
 
@@ -1070,6 +1157,8 @@ export const ENDPOINT_REGISTRY: TestConfig[] = [
   ...utilEndpoints,
   ...kvEndpoints,
   ...pasteEndpoints,
+  ...counterEndpoints,
+  ...sqlEndpoints,
 ];
 
 // Category mapping for filtered runs
@@ -1084,11 +1173,13 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
   util: utilEndpoints,
   kv: kvEndpoints,
   paste: pasteEndpoints,
+  counter: counterEndpoints,
+  sql: sqlEndpoints,
 };
 
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
-  total: ENDPOINT_REGISTRY.length, // 105 endpoints
+  total: ENDPOINT_REGISTRY.length, // 114 endpoints
   stacks: stacksEndpoints.length,  // 15
   ai: aiEndpoints.length,          // 13
   text: textEndpoints.length,      // 24
@@ -1099,4 +1190,6 @@ export const ENDPOINT_COUNTS = {
   util: utilEndpoints.length,      // 23
   kv: kvEndpoints.length,          // 4
   paste: pasteEndpoints.length,    // 3
+  counter: counterEndpoints.length, // 6
+  sql: sqlEndpoints.length,        // 3
 };

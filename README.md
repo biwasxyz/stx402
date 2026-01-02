@@ -1,6 +1,6 @@
 # STX402
 
-Cloudflare Worker API providing **123 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
+Cloudflare Worker API providing **132 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
 
 ## Payment
 
@@ -210,6 +210,42 @@ Simple paste service with short codes for sharing text snippets.
 - Max content size: 500KB
 - Owner-only deletion
 
+### Counter (6 endpoints)
+
+Atomic counters backed by Durable Objects with SQLite storage. Each payer gets isolated counter namespace.
+
+| Method | Path | Tier | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/counter/increment` | storage_write | Atomically increment counter |
+| `POST` | `/api/counter/decrement` | storage_write | Atomically decrement counter |
+| `GET` | `/api/counter/get` | storage_read | Get counter value and metadata |
+| `POST` | `/api/counter/reset` | storage_write | Reset counter to zero or value |
+| `GET` | `/api/counter/list` | storage_read | List all counters |
+| `POST` | `/api/counter/delete` | storage_write | Delete a counter |
+
+**Features:**
+- Atomic increment/decrement with configurable step
+- Optional min/max bounds (capped counters)
+- Persistent storage via Cloudflare Durable Objects
+- Per-user isolation (by payer address)
+
+### SQL (3 endpoints)
+
+Direct SQL access to your per-user SQLite database in Durable Objects.
+
+| Method | Path | Tier | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/sql/query` | storage_read | Execute SELECT query |
+| `POST` | `/api/sql/execute` | storage_write | Execute write query (CREATE, INSERT, UPDATE, DELETE) |
+| `GET` | `/api/sql/schema` | storage_read | Get database schema |
+
+**Features:**
+- Full SQLite syntax support
+- Parameterized queries for safety
+- System tables protected (counters, user_data)
+- Create your own tables for custom data
+- Per-user isolation (by payer address)
+
 ## Project Structure
 
 ```
@@ -226,8 +262,14 @@ src/
 │   ├── util*.ts        # General utilities
 │   ├── kv/             # KV storage endpoints
 │   │   └── kv*.ts      # set, get, delete, list
-│   └── paste/          # Paste endpoints
-│       └── paste*.ts   # create, get, delete
+│   ├── paste/          # Paste endpoints
+│   │   └── paste*.ts   # create, get, delete
+│   ├── counter/        # Counter endpoints (Durable Objects)
+│   │   └── counter*.ts # increment, decrement, get, reset, list, delete
+│   └── sql/            # SQL endpoints (Durable Objects)
+│       └── sql*.ts     # query, execute, schema
+├── durable-objects/
+│   └── UserDurableObject.ts  # Per-user SQLite-backed DO
 ├── middleware/
 │   ├── x402-stacks.ts  # X402 payment verification
 │   └── metrics.ts      # Usage tracking (KV)
