@@ -1558,7 +1558,7 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
 
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
-  total: ENDPOINT_REGISTRY.length, // 150 endpoints (148 paid + 2 free)
+  total: ENDPOINT_REGISTRY.length, // 150 tests (148 paid + 2 free tested; health/dashboard excluded)
   stacks: stacksEndpoints.length,  // 15
   ai: aiEndpoints.length,          // 13
   text: textEndpoints.length,      // 24
