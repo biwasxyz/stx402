@@ -4,9 +4,8 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  isSome,
+  isNone,
   uint,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -108,6 +107,7 @@ export class ReputationClients extends BaseEndpoint {
     }
 
     try {
+      // get-clients returns (optional (list principal))
       const result = await callRegistryFunction(
         network,
         "reputation",
@@ -116,19 +116,28 @@ export class ReputationClients extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 3001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
+      // none means no clients yet (or agent doesn't exist in reputation registry)
+      if (isNone(json)) {
+        return c.json({
+          agentId,
+          clients: [],
+          count: 0,
+          network,
+          tokenType,
+        });
       }
 
-      const clientsList = extractValue(json) as {
-        value: Array<{ value: string }>;
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      // Extract: { type: "some", value: { type: "list", value: [...] } }
+      const listValue = extractValue(json) as {
+        type: string;
+        value: Array<{ type: string; value: string }>;
       };
 
-      const clients = clientsList.value.map((item) => item.value);
+      const clients = listValue.value.map((item) => item.value);
 
       return c.json({
         agentId,

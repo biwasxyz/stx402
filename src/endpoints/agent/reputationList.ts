@@ -3,10 +3,6 @@ import type { AppContext } from "../../types";
 import {
   callRegistryFunction,
   clarityToJson,
-  extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
   uint,
   principal,
   buffer,
@@ -156,6 +152,7 @@ export class ReputationList extends BaseEndpoint {
 
     try {
       // read-all-feedback(agent-id, opt-clients, opt-tag1, opt-tag2, include-revoked)
+      // Returns a list directly, not wrapped in (ok ...)
       const args = [
         uint(agentId),
         filterByClients && filterByClients.length > 0
@@ -174,28 +171,27 @@ export class ReputationList extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 3001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
-      }
-
-      const feedbackList = extractValue(json) as {
+      // Result is { type: "list", value: [...] }
+      const listResult = json as {
+        type: string;
         value: Array<{
+          type: string;
           value: {
-            client: { value: string };
-            index: { value: string };
-            score: { value: string };
-            tag1: { value: string };
-            tag2: { value: string };
-            "is-revoked": { value: boolean };
+            client: { type: string; value: string };
+            index: { type: string; value: string };
+            score: { type: string; value: string };
+            tag1: { type: string; value: string };
+            tag2: { type: string; value: string };
+            "is-revoked": { type: string; value: boolean };
           };
         }>;
       };
 
-      const feedback = feedbackList.value.map((item) => ({
+      if (listResult.type !== "list") {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      const feedback = listResult.value.map((item) => ({
         client: item.value.client.value,
         index: parseInt(item.value.index.value, 10),
         score: parseInt(item.value.score.value, 10),

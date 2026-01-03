@@ -156,7 +156,7 @@ export function list(items: ClarityValue[]): ClarityValue {
 }
 
 /**
- * Extract value from Clarity response (ok/err wrapper)
+ * Extract value from Clarity response (ok/err/some wrapper)
  */
 export function extractValue(result: unknown): unknown {
   if (
@@ -166,7 +166,7 @@ export function extractValue(result: unknown): unknown {
     "value" in result
   ) {
     const typed = result as { type: string; value: unknown };
-    if (typed.type === "ok" || typed.type === "err") {
+    if (typed.type === "ok" || typed.type === "err" || typed.type === "some") {
       return typed.value;
     }
   }
@@ -174,7 +174,7 @@ export function extractValue(result: unknown): unknown {
 }
 
 /**
- * Check if result is ok
+ * Check if result is ok (for response types)
  */
 export function isOk(result: unknown): boolean {
   if (result && typeof result === "object" && "type" in result) {
@@ -184,7 +184,38 @@ export function isOk(result: unknown): boolean {
 }
 
 /**
+ * Check if result is some (for optional types)
+ */
+export function isSome(result: unknown): boolean {
+  if (result && typeof result === "object" && "type" in result) {
+    return (result as { type: string }).type === "some";
+  }
+  return false;
+}
+
+/**
+ * Check if result is none (for optional types)
+ */
+export function isNone(result: unknown): boolean {
+  if (result && typeof result === "object" && "type" in result) {
+    return (result as { type: string }).type === "none";
+  }
+  return false;
+}
+
+/**
+ * Extract the inner value from typed Clarity values (principal, uint, string-utf8, etc.)
+ */
+export function extractTypedValue(result: unknown): unknown {
+  if (result && typeof result === "object" && "value" in result) {
+    return (result as { value: unknown }).value;
+  }
+  return result;
+}
+
+/**
  * Get error code from Clarity err response
+ * Handles cvToJSON structure: { type: "err", value: { type: "uint", value: "1001" } }
  */
 export function getErrorCode(result: unknown): number | null {
   if (
@@ -195,8 +226,20 @@ export function getErrorCode(result: unknown): number | null {
   ) {
     const typed = result as { type: string; value: unknown };
     if (typed.type === "err") {
+      // Handle uint wrapped in type object: { type: "uint", value: "1001" }
       if (typeof typed.value === "object" && typed.value && "value" in typed.value) {
-        return Number((typed.value as { value: string }).value);
+        const innerValue = (typed.value as { value: unknown }).value;
+        // Value could be string (from JSON) or number/bigint
+        if (typeof innerValue === "string") {
+          return parseInt(innerValue, 10);
+        }
+        if (typeof innerValue === "number" || typeof innerValue === "bigint") {
+          return Number(innerValue);
+        }
+      }
+      // Handle direct number value (less common)
+      if (typeof typed.value === "number") {
+        return typed.value;
       }
     }
   }

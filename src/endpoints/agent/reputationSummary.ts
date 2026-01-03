@@ -3,10 +3,6 @@ import type { AppContext } from "../../types";
 import {
   callRegistryFunction,
   clarityToJson,
-  extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
   uint,
   principal,
   buffer,
@@ -84,7 +80,6 @@ export class ReputationSummary extends BaseEndpoint {
                 agentId: { type: "number" as const },
                 count: { type: "number" as const },
                 averageScore: { type: "number" as const },
-                totalScore: { type: "number" as const },
                 network: { type: "string" as const },
                 tokenType: { type: "string" as const },
               },
@@ -148,27 +143,27 @@ export class ReputationSummary extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 3001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
-      }
-
-      const summary = extractValue(json) as {
+      // get-summary returns a tuple directly: { count, average-score }
+      // cvToJSON structure: { type: "tuple", value: { count: { type: "uint", value: "0" }, ... } }
+      const tuple = json as {
+        type: string;
         value: {
-          count: { value: string };
-          "average-score": { value: string };
-          "total-score": { value: string };
+          count: { type: string; value: string };
+          "average-score": { type: string; value: string };
         };
       };
 
+      if (tuple.type !== "tuple" || !tuple.value) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      const count = parseInt(tuple.value.count.value, 10);
+      const averageScore = parseInt(tuple.value["average-score"].value, 10);
+
       return c.json({
         agentId,
-        count: parseInt(summary.value.count.value, 10),
-        averageScore: parseInt(summary.value["average-score"].value, 10),
-        totalScore: parseInt(summary.value["total-score"].value, 10),
+        count,
+        averageScore,
         network,
         tokenType,
       });

@@ -4,9 +4,9 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  extractTypedValue,
+  isSome,
+  isNone,
   uint,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -108,7 +108,7 @@ export class AgentInfo extends BaseEndpoint {
     }
 
     try {
-      // Fetch owner
+      // Fetch owner - returns (optional principal)
       const ownerResult = await callRegistryFunction(
         network,
         "identity",
@@ -117,22 +117,20 @@ export class AgentInfo extends BaseEndpoint {
       );
       const ownerJson = clarityToJson(ownerResult);
 
-      if (!isOk(ownerJson)) {
-        const errorCode = getErrorCode(ownerJson);
-        if (errorCode === 1001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(
-          c,
-          getErrorMessage(errorCode || 0),
-          400,
-          { errorCode }
-        );
+      // owner-of returns (optional principal): some = exists, none = not found
+      if (isNone(ownerJson)) {
+        return this.errorResponse(c, "Agent not found", 404, { agentId });
       }
 
-      const owner = extractValue(ownerJson) as { value: string };
+      if (!isSome(ownerJson)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
 
-      // Fetch URI
+      // Extract: { type: "some", value: { type: "principal", value: "SP..." } }
+      const ownerValue = extractValue(ownerJson); // { type: "principal", value: "SP..." }
+      const owner = extractTypedValue(ownerValue) as string;
+
+      // Fetch URI - returns (optional (string-utf8 512))
       const uriResult = await callRegistryFunction(
         network,
         "identity",
@@ -141,18 +139,16 @@ export class AgentInfo extends BaseEndpoint {
       );
       const uriJson = clarityToJson(uriResult);
       let uri: string | null = null;
-      if (isOk(uriJson)) {
+      if (isSome(uriJson)) {
         const uriValue = extractValue(uriJson);
-        if (uriValue && typeof uriValue === "object" && "value" in uriValue) {
-          uri = (uriValue as { value: string }).value;
-        }
+        uri = extractTypedValue(uriValue) as string;
       }
 
       const contracts = ERC8004_CONTRACTS[network]!;
 
       return c.json({
         agentId,
-        owner: owner.value,
+        owner,
         uri,
         network,
         contractId: contracts.identity,

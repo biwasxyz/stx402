@@ -4,9 +4,9 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  extractTypedValue,
+  isSome,
+  isNone,
   uint,
   stringUtf8,
   type ERC8004Network,
@@ -119,6 +119,7 @@ export class AgentMetadata extends BaseEndpoint {
     }
 
     try {
+      // get-metadata returns (optional (buffer 512))
       const result = await callRegistryFunction(
         network,
         "identity",
@@ -127,39 +128,20 @@ export class AgentMetadata extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 1001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
-      }
-
-      const valueWrapper = extractValue(json);
-
-      // Handle optional (none) response
-      if (
-        !valueWrapper ||
-        (typeof valueWrapper === "object" &&
-          "type" in valueWrapper &&
-          (valueWrapper as { type: string }).type === "none")
-      ) {
+      if (isNone(json)) {
         return this.errorResponse(c, "Metadata key not found", 404, {
           agentId,
           key,
         });
       }
 
-      // Extract the actual buffer value
-      let valueHex = "";
-      if (
-        typeof valueWrapper === "object" &&
-        "value" in valueWrapper &&
-        valueWrapper.value
-      ) {
-        const inner = valueWrapper.value as { value?: string };
-        valueHex = inner.value || "";
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
       }
+
+      // Extract buffer value
+      const bufferValue = extractValue(json);
+      const valueHex = extractTypedValue(bufferValue) as string;
 
       // Try to decode as UTF-8 text
       let valueText = "";

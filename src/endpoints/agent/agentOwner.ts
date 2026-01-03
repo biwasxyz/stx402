@@ -4,9 +4,9 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  extractTypedValue,
+  isSome,
+  isNone,
   uint,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -92,6 +92,7 @@ export class AgentOwner extends BaseEndpoint {
     }
 
     try {
+      // owner-of returns (optional principal)
       const result = await callRegistryFunction(
         network,
         "identity",
@@ -100,19 +101,20 @@ export class AgentOwner extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 1001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
+      if (isNone(json)) {
+        return this.errorResponse(c, "Agent not found", 404, { agentId });
       }
 
-      const owner = extractValue(json) as { value: string };
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      const ownerValue = extractValue(json);
+      const owner = extractTypedValue(ownerValue) as string;
 
       return c.json({
         agentId,
-        owner: owner.value,
+        owner,
         network,
         tokenType,
       });

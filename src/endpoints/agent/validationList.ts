@@ -4,9 +4,8 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  isSome,
+  isNone,
   uint,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -109,6 +108,7 @@ export class ValidationList extends BaseEndpoint {
     }
 
     try {
+      // get-agent-validations returns (optional (list buffer))
       const result = await callRegistryFunction(
         network,
         "validation",
@@ -117,19 +117,28 @@ export class ValidationList extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 2001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
+      // none means no validations yet
+      if (isNone(json)) {
+        return c.json({
+          agentId,
+          validations: [],
+          count: 0,
+          network,
+          tokenType,
+        });
       }
 
-      const validationsList = extractValue(json) as {
-        value: Array<{ value: string }>;
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      // Extract list from some
+      const listValue = extractValue(json) as {
+        type: string;
+        value: Array<{ type: string; value: string }>;
       };
 
-      const validations = validationsList.value.map((item) => item.value);
+      const validations = listValue.value.map((item) => item.value);
 
       return c.json({
         agentId,

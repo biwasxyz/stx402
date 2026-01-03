@@ -4,7 +4,8 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
+  extractTypedValue,
+  isSome,
   uint,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -140,6 +141,7 @@ export class AgentLookup extends BaseEndpoint {
         scanned++;
 
         try {
+          // owner-of returns (optional principal)
           const ownerResult = await callRegistryFunction(
             network,
             "identity",
@@ -148,8 +150,8 @@ export class AgentLookup extends BaseEndpoint {
           );
           const ownerJson = clarityToJson(ownerResult);
 
-          if (!isOk(ownerJson)) {
-            // Agent doesn't exist
+          if (!isSome(ownerJson)) {
+            // Agent doesn't exist (none) or unexpected format
             consecutiveNotFound++;
             if (consecutiveNotFound >= MAX_CONSECUTIVE_NOT_FOUND) {
               // Assume we've reached the end of registered agents
@@ -159,9 +161,10 @@ export class AgentLookup extends BaseEndpoint {
           }
 
           consecutiveNotFound = 0;
-          const ownerValue = extractValue(ownerJson) as { value: string };
+          const ownerValue = extractValue(ownerJson);
+          const agentOwner = extractTypedValue(ownerValue) as string;
 
-          if (ownerValue.value === owner) {
+          if (agentOwner === owner) {
             // Found a match, get the URI too
             let uri: string | null = null;
             try {
@@ -172,15 +175,9 @@ export class AgentLookup extends BaseEndpoint {
                 [uint(id)]
               );
               const uriJson = clarityToJson(uriResult);
-              if (isOk(uriJson)) {
+              if (isSome(uriJson)) {
                 const uriValue = extractValue(uriJson);
-                if (
-                  uriValue &&
-                  typeof uriValue === "object" &&
-                  "value" in uriValue
-                ) {
-                  uri = (uriValue as { value: string }).value || null;
-                }
+                uri = (extractTypedValue(uriValue) as string) || null;
               }
             } catch {
               // URI fetch failed, continue without it

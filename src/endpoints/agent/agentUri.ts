@@ -4,9 +4,9 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  extractTypedValue,
+  isSome,
+  isNone,
   uint,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -92,6 +92,7 @@ export class AgentUri extends BaseEndpoint {
     }
 
     try {
+      // get-uri returns (optional (string-utf8 512))
       const result = await callRegistryFunction(
         network,
         "identity",
@@ -100,23 +101,16 @@ export class AgentUri extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 1001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
+      if (isNone(json)) {
+        return this.errorResponse(c, "Agent has no URI set", 404, { agentId });
+      }
+
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
       }
 
       const uriValue = extractValue(json);
-      let uri: string | null = null;
-
-      // Handle optional response
-      if (uriValue && typeof uriValue === "object") {
-        if ("value" in uriValue && uriValue.value) {
-          uri = (uriValue as { value: string }).value;
-        }
-      }
+      const uri = extractTypedValue(uriValue) as string;
 
       if (!uri) {
         return this.errorResponse(c, "Agent has no URI set", 404, { agentId });

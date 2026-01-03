@@ -4,9 +4,8 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  isSome,
+  isNone,
   principal,
   type ERC8004Network,
   ERC8004_CONTRACTS,
@@ -108,6 +107,7 @@ export class ValidationRequests extends BaseEndpoint {
     }
 
     try {
+      // get-validator-requests returns (optional (list buffer))
       const result = await callRegistryFunction(
         network,
         "validation",
@@ -116,16 +116,28 @@ export class ValidationRequests extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
+      // none means no requests for this validator
+      if (isNone(json)) {
+        return c.json({
+          validator,
+          requests: [],
+          count: 0,
+          network,
+          tokenType,
+        });
       }
 
-      const requestsList = extractValue(json) as {
-        value: Array<{ value: string }>;
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      // Extract list from some
+      const listValue = extractValue(json) as {
+        type: string;
+        value: Array<{ type: string; value: string }>;
       };
 
-      const requests = requestsList.value.map((item) => item.value);
+      const requests = listValue.value.map((item) => item.value);
 
       return c.json({
         validator,

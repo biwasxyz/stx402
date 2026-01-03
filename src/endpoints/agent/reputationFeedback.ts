@@ -4,9 +4,8 @@ import {
   callRegistryFunction,
   clarityToJson,
   extractValue,
-  isOk,
-  getErrorCode,
-  getErrorMessage,
+  isSome,
+  isNone,
   uint,
   principal,
   type ERC8004Network,
@@ -124,6 +123,7 @@ export class ReputationFeedback extends BaseEndpoint {
     }
 
     try {
+      // read-feedback returns (optional tuple)
       const result = await callRegistryFunction(
         network,
         "reputation",
@@ -132,27 +132,26 @@ export class ReputationFeedback extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        const errorCode = getErrorCode(json);
-        if (errorCode === 3001) {
-          return this.errorResponse(c, "Agent not found", 404, { agentId });
-        }
-        if (errorCode === 3002) {
-          return this.errorResponse(c, "Feedback not found", 404, {
-            agentId,
-            client,
-            index,
-          });
-        }
-        return this.errorResponse(c, getErrorMessage(errorCode || 0), 400);
+      if (isNone(json)) {
+        return this.errorResponse(c, "Feedback not found", 404, {
+          agentId,
+          client,
+          index,
+        });
       }
 
-      const feedback = extractValue(json) as {
+      if (!isSome(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
+      // Extract tuple: { type: "tuple", value: { score: {}, tag1: {}, ... } }
+      const tupleValue = extractValue(json) as {
+        type: string;
         value: {
-          score: { value: string };
-          tag1: { value: string };
-          tag2: { value: string };
-          "is-revoked": { value: boolean };
+          score: { type: string; value: string };
+          tag1: { type: string; value: string };
+          tag2: { type: string; value: string };
+          "is-revoked": { type: string; value: boolean };
         };
       };
 
@@ -160,10 +159,10 @@ export class ReputationFeedback extends BaseEndpoint {
         agentId,
         client,
         index,
-        score: parseInt(feedback.value.score.value, 10),
-        tag1: feedback.value.tag1.value,
-        tag2: feedback.value.tag2.value,
-        isRevoked: feedback.value["is-revoked"].value,
+        score: parseInt(tupleValue.value.score.value, 10),
+        tag1: tupleValue.value.tag1.value,
+        tag2: tupleValue.value.tag2.value,
+        isRevoked: tupleValue.value["is-revoked"].value,
         network,
         tokenType,
       });

@@ -3,8 +3,7 @@ import type { AppContext } from "../../types";
 import {
   callRegistryFunction,
   clarityToJson,
-  extractValue,
-  isOk,
+  extractTypedValue,
   type ERC8004Network,
   ERC8004_CONTRACTS,
 } from "../../utils/erc8004";
@@ -71,6 +70,7 @@ export class AgentVersion extends BaseEndpoint {
     }
 
     try {
+      // get-version returns (string-utf8 5) directly, not wrapped in (ok ...)
       const result = await callRegistryFunction(
         network,
         "identity",
@@ -79,15 +79,12 @@ export class AgentVersion extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      if (!isOk(json)) {
-        return this.errorResponse(c, "Failed to fetch version", 400);
-      }
-
-      const versionValue = extractValue(json) as { value: string };
+      // Result is { type: "string-utf8", value: "1.0.0" }
+      const version = extractTypedValue(json) as string;
       const contracts = ERC8004_CONTRACTS[network]!;
 
       return c.json({
-        version: versionValue.value,
+        version,
         registry: "identity",
         contractId: contracts.identity,
         network,
