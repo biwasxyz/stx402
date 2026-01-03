@@ -202,6 +202,26 @@ import {
   MemoryForget,
 } from "./endpoints/memory";
 
+// Agent Registry endpoints (ERC-8004)
+import {
+  AgentInfo,
+  AgentOwner,
+  AgentUri,
+  AgentMetadata,
+  AgentVersion,
+  ReputationSummary,
+  ReputationFeedback,
+  ReputationList,
+  ReputationClients,
+  ReputationAuthHash,
+  ValidationStatus,
+  ValidationSummary,
+  ValidationList,
+  ValidationRequests,
+  RegistryInfo,
+  AgentLookup,
+} from "./endpoints/agent";
+
 // Durable Objects
 export { UserDurableObject } from "./durable-objects/UserDurableObject";
 
@@ -445,6 +465,28 @@ openapi.post("/api/memory/recall", paymentMiddleware, trackMetrics, MemoryRecall
 openapi.post("/api/memory/search", paymentMiddleware, trackMetrics, MemorySearch as any);
 openapi.post("/api/memory/list", paymentMiddleware, trackMetrics, MemoryList as any);
 openapi.post("/api/memory/forget", paymentMiddleware, trackMetrics, MemoryForget as any);
+
+// Agent Registry endpoints (ERC-8004)
+// Meta endpoints
+openapi.get("/api/agent/registry", RegistryInfo as any); // Free endpoint
+// Identity Registry
+openapi.post("/api/agent/info", paymentMiddleware, trackMetrics, AgentInfo as any);
+openapi.get("/api/agent/owner", paymentMiddleware, trackMetrics, AgentOwner as any);
+openapi.get("/api/agent/uri", paymentMiddleware, trackMetrics, AgentUri as any);
+openapi.post("/api/agent/metadata", paymentMiddleware, trackMetrics, AgentMetadata as any);
+openapi.get("/api/agent/version", paymentMiddleware, trackMetrics, AgentVersion as any);
+openapi.post("/api/agent/lookup", paymentMiddleware, trackMetrics, AgentLookup as any);
+// Reputation Registry
+openapi.post("/api/agent/reputation/summary", paymentMiddleware, trackMetrics, ReputationSummary as any);
+openapi.post("/api/agent/reputation/feedback", paymentMiddleware, trackMetrics, ReputationFeedback as any);
+openapi.post("/api/agent/reputation/list", paymentMiddleware, trackMetrics, ReputationList as any);
+openapi.post("/api/agent/reputation/clients", paymentMiddleware, trackMetrics, ReputationClients as any);
+openapi.post("/api/agent/reputation/auth-hash", paymentMiddleware, trackMetrics, ReputationAuthHash as any);
+// Validation Registry
+openapi.post("/api/agent/validation/status", paymentMiddleware, trackMetrics, ValidationStatus as any);
+openapi.post("/api/agent/validation/summary", paymentMiddleware, trackMetrics, ValidationSummary as any);
+openapi.post("/api/agent/validation/list", paymentMiddleware, trackMetrics, ValidationList as any);
+openapi.post("/api/agent/validation/requests", paymentMiddleware, trackMetrics, ValidationRequests as any);
 
 // Export the Hono app
 export default app;

@@ -52,7 +52,7 @@ export const TIER_AMOUNTS: Record<PricingTier, Record<TokenType, string>> = {
   },
 };
 
-// Endpoint path to pricing tier mapping (148 paid endpoints + 4 free = 152 total)
+// Endpoint path to pricing tier mapping (163 paid endpoints + 5 free = 168 total)
 export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   // === STACKS ENDPOINTS (15) ===
   "/api/stacks/get-bns-name": "simple",
@@ -239,6 +239,27 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/memory/search": "storage_ai",
   "/api/memory/list": "storage_read",
   "/api/memory/forget": "storage_write",
+
+  // === AGENT REGISTRY ENDPOINTS (15 paid + 1 free) - ERC-8004 ===
+  // Identity Registry
+  "/api/agent/info": "simple",
+  "/api/agent/owner": "simple",
+  "/api/agent/uri": "simple",
+  "/api/agent/metadata": "simple",
+  "/api/agent/version": "simple",
+  "/api/agent/lookup": "simple",
+  // Reputation Registry
+  "/api/agent/reputation/summary": "simple",
+  "/api/agent/reputation/feedback": "simple",
+  "/api/agent/reputation/list": "simple",
+  "/api/agent/reputation/clients": "simple",
+  "/api/agent/reputation/auth-hash": "simple",
+  // Validation Registry
+  "/api/agent/validation/status": "simple",
+  "/api/agent/validation/summary": "simple",
+  "/api/agent/validation/list": "simple",
+  "/api/agent/validation/requests": "simple",
+  // Note: /api/agent/registry is free - not in tier list
 };
 
 // Get pricing tier for an endpoint path (strips path params like :address)

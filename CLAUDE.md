@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-STX402 is a Cloudflare Workers API providing **152 useful endpoints** via X402 micropayments.
+STX402 is a Cloudflare Workers API providing **168 useful endpoints** via X402 micropayments.
 
 **Vision**: A marketplace of useful API endpoints where the best ones surface to the top based on usage and earnings. Each endpoint is simple, composable, and pays for itself through micropayments.
 
@@ -31,7 +31,7 @@ bun run tests/get-bns-address.test.ts
 
 ## Architecture
 
-### Endpoint Categories (152 total)
+### Endpoint Categories (168 total)
 
 | Category | Count | Path Pattern | Tier | Description |
 |----------|-------|--------------|------|-------------|
@@ -54,6 +54,7 @@ bun run tests/get-bns-address.test.ts
 | Sync | 5 | `/api/sync/*` | storage_* | Distributed locks with auto-expiration |
 | Queue | 5 | `/api/queue/*` | storage_* | Job queue with priority and retries |
 | Memory | 5 | `/api/memory/*` | storage_ai | Agent memory with semantic search |
+| Agent | 16 | `/api/agent/*` | simple | ERC-8004 agent registry (identity, reputation, validation) |
 
 ### Pricing Tiers
 
@@ -128,6 +129,7 @@ export class MyEndpoint extends BaseEndpoint {
 - `src/endpoints/sync/*.ts` - Distributed lock endpoints (lock, unlock, check, extend, list)
 - `src/endpoints/queue/*.ts` - Job queue endpoints (push, pop, complete, fail, status)
 - `src/endpoints/memory/*.ts` - Agent memory endpoints (store, recall, search, list, forget)
+- `src/endpoints/agent/*.ts` - ERC-8004 agent registry endpoints (identity, reputation, validation)
 
 **Durable Objects:**
 - `src/durable-objects/UserDurableObject.ts` - Per-user SQLite-backed DO (counters, links, locks, queues, memories)
@@ -142,6 +144,7 @@ export class MyEndpoint extends BaseEndpoint {
 - `src/utils/network.ts` - Network detection from address prefix
 - `src/utils/bns.ts` - BNS contract queries
 - `src/utils/clarity.ts` - Clarity value decoder
+- `src/utils/erc8004.ts` - ERC-8004 contract addresses, read-only call helpers, SIP-018 signing
 
 ### X402 Payment Flow
 

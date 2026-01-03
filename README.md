@@ -1,6 +1,6 @@
 # STX402
 
-Cloudflare Worker API providing **152 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
+Cloudflare Worker API providing **168 useful endpoints** via [X402 micropayments](https://x402.org). Built with [OpenAPI 3.1](https://github.com/cloudflare/chanfana) + [Hono](https://hono.dev).
 
 ## Payment
 
@@ -348,6 +348,36 @@ AI-powered agent memory system with semantic search, backed by Durable Objects.
 - Optional TTL for expiring memories
 - Per-user isolation (by payer address)
 
+### Agent Registry (16 endpoints)
+
+ERC-8004 agent registry integration for on-chain agent identity, reputation, and validation. Queries the deployed Stacks contracts.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/agent/registry` | **(free)** Get registry contract info |
+| `POST` | `/api/agent/info` | Get full agent info (owner, URI) |
+| `GET` | `/api/agent/owner` | Get agent owner by ID |
+| `GET` | `/api/agent/uri` | Get agent metadata URI |
+| `POST` | `/api/agent/metadata` | Get specific metadata key |
+| `GET` | `/api/agent/version` | Get identity registry version |
+| `POST` | `/api/agent/lookup` | Lookup agents by owner address |
+| `POST` | `/api/agent/reputation/summary` | Get reputation stats |
+| `POST` | `/api/agent/reputation/feedback` | Get specific feedback entry |
+| `POST` | `/api/agent/reputation/list` | List all feedback |
+| `POST` | `/api/agent/reputation/clients` | List feedback clients |
+| `POST` | `/api/agent/reputation/auth-hash` | Generate SIP-018 signing hash |
+| `POST` | `/api/agent/validation/status` | Get validation by request hash |
+| `POST` | `/api/agent/validation/summary` | Get validation stats |
+| `POST` | `/api/agent/validation/list` | List agent validations |
+| `POST` | `/api/agent/validation/requests` | List validator requests |
+
+**Features:**
+- Read-only queries to deployed ERC-8004 contracts
+- Testnet contracts at `ST3YT0XW92E6T2FE59B2G5N2WNNFSBZ6MZKQS5D18.*`
+- Network selection via `?network=testnet|mainnet`
+- SIP-018 message hash generation for off-chain feedback authorization
+- Identity, reputation, and validation registry support
+
 ## Project Structure
 
 ```
@@ -376,8 +406,10 @@ src/
 │   │   └── sync*.ts    # lock, unlock, check, extend, list
 │   ├── queue/          # Job queue endpoints (Durable Objects)
 │   │   └── queue*.ts   # push, pop, complete, fail, status
-│   └── memory/         # Agent memory endpoints (Durable Objects + AI)
-│       └── memory*.ts  # store, recall, search, list, forget
+│   ├── memory/         # Agent memory endpoints (Durable Objects + AI)
+│   │   └── memory*.ts  # store, recall, search, list, forget
+│   └── agent/          # ERC-8004 agent registry endpoints
+│       └── *.ts        # identity, reputation, validation
 ├── durable-objects/
 │   └── UserDurableObject.ts  # Per-user SQLite-backed DO
 ├── middleware/
@@ -385,7 +417,8 @@ src/
 │   └── metrics.ts      # Usage tracking (KV)
 ├── utils/
 │   ├── namespace.ts    # KV key formatting utilities
-│   └── pricing.ts      # Pricing tiers and amounts
+│   ├── pricing.ts      # Pricing tiers and amounts
+│   └── erc8004.ts      # ERC-8004 contract addresses and helpers
 └── index.ts            # Hono app + route registration
 ```
 

@@ -1531,6 +1531,179 @@ const memoryEndpoints: TestConfig[] = [
 ];
 
 // =============================================================================
+// AGENT REGISTRY ENDPOINTS (16) - ERC-8004
+// Note: These endpoints query on-chain ERC-8004 agent registry contracts.
+// Uses testnet contracts by default.
+// =============================================================================
+
+const agentEndpoints: TestConfig[] = [
+  {
+    name: "agent-registry",
+    endpoint: "/api/agent/registry",
+    method: "GET",
+    // This is a FREE endpoint, no payment required
+    skipPayment: true,
+    validateResponse: (data) =>
+      hasFields(data, ["networks", "specification", "registries"]),
+  },
+  {
+    name: "agent-info",
+    endpoint: "/api/agent/info?network=testnet",
+    method: "POST",
+    body: { agentId: 0 },
+    // May return 404 if no agents registered
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "agent-owner",
+    endpoint: "/api/agent/owner?agentId=0&network=testnet",
+    method: "GET",
+    // May return 404 if agent doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "agent-uri",
+    endpoint: "/api/agent/uri?agentId=0&network=testnet",
+    method: "GET",
+    // May return 404 if agent doesn't exist or has no URI
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "agent-metadata",
+    endpoint: "/api/agent/metadata?network=testnet",
+    method: "POST",
+    body: { agentId: 0, key: "name" },
+    // May return 404 if agent or key doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "agent-version",
+    endpoint: "/api/agent/version?network=testnet",
+    method: "GET",
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["version", "registry"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "agent-lookup",
+    endpoint: "/api/agent/lookup?network=testnet",
+    method: "POST",
+    body: { owner: "ST3YT0XW92E6T2FE59B2G5N2WNNFSBZ6MZKQS5D18", maxScan: 5 },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["owner", "agents", "count"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "reputation-summary",
+    endpoint: "/api/agent/reputation/summary?network=testnet",
+    method: "POST",
+    body: { agentId: 0 },
+    // May return 404 if agent doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return (hasFields(data, ["count", "averageScore"]) && hasTokenType(data, tokenType)) || hasField(data, "error");
+    },
+  },
+  {
+    name: "reputation-feedback",
+    endpoint: "/api/agent/reputation/feedback?network=testnet",
+    method: "POST",
+    body: { agentId: 0, client: "ST3YT0XW92E6T2FE59B2G5N2WNNFSBZ6MZKQS5D18", index: 0 },
+    // May return 404 if feedback doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "reputation-list",
+    endpoint: "/api/agent/reputation/list?network=testnet",
+    method: "POST",
+    body: { agentId: 0 },
+    // May return 404 if agent doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return (hasFields(data, ["feedback", "count"]) && hasTokenType(data, tokenType)) || hasField(data, "error");
+    },
+  },
+  {
+    name: "reputation-clients",
+    endpoint: "/api/agent/reputation/clients?network=testnet",
+    method: "POST",
+    body: { agentId: 0 },
+    // May return 404 if agent doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return (hasFields(data, ["clients", "count"]) && hasTokenType(data, tokenType)) || hasField(data, "error");
+    },
+  },
+  {
+    name: "reputation-auth-hash",
+    endpoint: "/api/agent/reputation/auth-hash?network=testnet",
+    method: "POST",
+    body: {
+      agentId: 0,
+      signer: "ST3YT0XW92E6T2FE59B2G5N2WNNFSBZ6MZKQS5D18",
+      indexLimit: 10,
+      expiryBlockHeight: 999999,
+    },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["messageHash", "domain", "structuredData"]) && hasTokenType(data, tokenType),
+  },
+  {
+    name: "validation-status",
+    endpoint: "/api/agent/validation/status?network=testnet",
+    method: "POST",
+    body: { requestHash: "0x" + "0".repeat(64) },
+    // May return 404 if validation doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return hasTokenType(data, tokenType) || hasField(data, "error");
+    },
+  },
+  {
+    name: "validation-summary",
+    endpoint: "/api/agent/validation/summary?network=testnet",
+    method: "POST",
+    body: { agentId: 0 },
+    // May return 404 if agent doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return (hasFields(data, ["count", "averageScore"]) && hasTokenType(data, tokenType)) || hasField(data, "error");
+    },
+  },
+  {
+    name: "validation-list",
+    endpoint: "/api/agent/validation/list?network=testnet",
+    method: "POST",
+    body: { agentId: 0 },
+    // May return 404 if agent doesn't exist
+    allowedStatuses: [404],
+    validateResponse: (data, tokenType) => {
+      return (hasFields(data, ["validations", "count"]) && hasTokenType(data, tokenType)) || hasField(data, "error");
+    },
+  },
+  {
+    name: "validation-requests",
+    endpoint: "/api/agent/validation/requests?network=testnet",
+    method: "POST",
+    body: { validator: "ST3YT0XW92E6T2FE59B2G5N2WNNFSBZ6MZKQS5D18" },
+    validateResponse: (data, tokenType) =>
+      hasFields(data, ["requests", "count"]) && hasTokenType(data, tokenType),
+  },
+];
+
+// =============================================================================
 // EXPORT COMBINED REGISTRY
 // =============================================================================
 
@@ -1553,6 +1726,7 @@ export const ENDPOINT_REGISTRY: TestConfig[] = [
   ...syncEndpoints,
   ...queueEndpoints,
   ...memoryEndpoints,
+  ...agentEndpoints,
 ];
 
 // Category mapping for filtered runs
@@ -1575,11 +1749,12 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
   sync: syncEndpoints,
   queue: queueEndpoints,
   memory: memoryEndpoints,
+  agent: agentEndpoints,
 };
 
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
-  total: ENDPOINT_REGISTRY.length, // 150 tests (148 paid + 2 free tested; health/dashboard excluded)
+  total: ENDPOINT_REGISTRY.length, // 166 tests (163 paid + 3 free tested; health/dashboard excluded)
   stacks: stacksEndpoints.length,  // 15
   ai: aiEndpoints.length,          // 13
   text: textEndpoints.length,      // 24
@@ -1598,4 +1773,5 @@ export const ENDPOINT_COUNTS = {
   sync: syncEndpoints.length,      // 5
   queue: queueEndpoints.length,    // 5
   memory: memoryEndpoints.length,  // 5
+  agent: agentEndpoints.length,    // 16
 };
