@@ -1223,6 +1223,8 @@ const registryEndpoints: TestConfig[] = [
     endpoint: "/api/registry/update",
     method: "POST",
     body: { url: "https://example.com/api/nonexistent", description: "Updated" },
+    // Expected to fail with 404 since the endpoint doesn't exist
+    allowedStatuses: [404],
     validateResponse: (data, tokenType) => {
       // May fail if not owner or not found
       return hasTokenType(data, tokenType) || hasField(data, "error");
@@ -1233,6 +1235,8 @@ const registryEndpoints: TestConfig[] = [
     endpoint: "/api/registry/delete",
     method: "POST",
     body: { url: "https://example.com/api/nonexistent" },
+    // Expected to fail with 404 since the endpoint doesn't exist
+    allowedStatuses: [404],
     validateResponse: (data, tokenType) => {
       // May fail if not owner or not found
       return hasTokenType(data, tokenType) || hasField(data, "error");
@@ -1244,13 +1248,15 @@ const registryEndpoints: TestConfig[] = [
     method: "POST",
     body: {},
     validateResponse: (data, tokenType) =>
-      hasField(data, "endpoints") && hasTokenType(data, tokenType),
+      hasField(data, "entries") && hasTokenType(data, tokenType),
   },
   {
     name: "registry-transfer",
     endpoint: "/api/registry/transfer",
     method: "POST",
     body: { url: "https://example.com/api/nonexistent", newOwner: FIXTURES.mainnetAddress },
+    // Expected to fail with 404 since the endpoint doesn't exist
+    allowedStatuses: [404],
     validateResponse: (data, tokenType) => {
       // May fail if not owner or not found
       return hasTokenType(data, tokenType) || hasField(data, "error");
