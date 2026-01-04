@@ -175,30 +175,61 @@ export function extractValue(result: unknown): unknown {
 
 /**
  * Check if result is ok (for response types)
+ * cvToJSON returns type like "(ok uint)" or just "ok"
  */
 export function isOk(result: unknown): boolean {
   if (result && typeof result === "object" && "type" in result) {
-    return (result as { type: string }).type === "ok";
+    const type = (result as { type: string }).type;
+    return type === "ok" || type.startsWith("(ok ");
   }
   return false;
 }
 
 /**
  * Check if result is some (for optional types)
+ * cvToJSON returns type like "(optional principal)" for some values
  */
 export function isSome(result: unknown): boolean {
   if (result && typeof result === "object" && "type" in result) {
-    return (result as { type: string }).type === "some";
+    const type = (result as { type: string }).type;
+    // It's "some" if it's optional but NOT "(optional none)"
+    return type.startsWith("(optional") && type !== "(optional none)";
   }
   return false;
 }
 
 /**
  * Check if result is none (for optional types)
+ * cvToJSON returns { type: "(optional none)", value: null }
  */
 export function isNone(result: unknown): boolean {
   if (result && typeof result === "object" && "type" in result) {
-    return (result as { type: string }).type === "none";
+    const type = (result as { type: string }).type;
+    return type === "(optional none)" || type === "none";
+  }
+  return false;
+}
+
+/**
+ * Check if result is a tuple
+ * cvToJSON returns type like "(tuple (count uint) (average-score uint))"
+ */
+export function isTuple(result: unknown): boolean {
+  if (result && typeof result === "object" && "type" in result) {
+    const type = (result as { type: string }).type;
+    return type.startsWith("(tuple");
+  }
+  return false;
+}
+
+/**
+ * Check if result is a list
+ * cvToJSON returns type like "(list 50 (tuple ...))"
+ */
+export function isList(result: unknown): boolean {
+  if (result && typeof result === "object" && "type" in result) {
+    const type = (result as { type: string }).type;
+    return type.startsWith("(list");
   }
   return false;
 }

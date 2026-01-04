@@ -3,6 +3,7 @@ import type { AppContext } from "../../types";
 import {
   callRegistryFunction,
   clarityToJson,
+  isTuple,
   uint,
   principal,
   buffer,
@@ -144,7 +145,11 @@ export class ReputationSummary extends BaseEndpoint {
       const json = clarityToJson(result);
 
       // get-summary returns a tuple directly: { count, average-score }
-      // cvToJSON structure: { type: "tuple", value: { count: { type: "uint", value: "0" }, ... } }
+      // cvToJSON structure: { type: "(tuple (count uint) (average-score uint))", value: { count: { type: "uint", value: "0" }, ... } }
+      if (!isTuple(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
       const tuple = json as {
         type: string;
         value: {
@@ -152,10 +157,6 @@ export class ReputationSummary extends BaseEndpoint {
           "average-score": { type: string; value: string };
         };
       };
-
-      if (tuple.type !== "tuple" || !tuple.value) {
-        return this.errorResponse(c, "Unexpected response format", 400);
-      }
 
       const count = parseInt(tuple.value.count.value, 10);
       const averageScore = parseInt(tuple.value["average-score"].value, 10);

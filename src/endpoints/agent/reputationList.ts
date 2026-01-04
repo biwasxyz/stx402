@@ -3,6 +3,7 @@ import type { AppContext } from "../../types";
 import {
   callRegistryFunction,
   clarityToJson,
+  isList,
   uint,
   principal,
   buffer,
@@ -171,7 +172,11 @@ export class ReputationList extends BaseEndpoint {
       );
       const json = clarityToJson(result);
 
-      // Result is { type: "list", value: [...] }
+      // Result is { type: "(list ...)", value: [...] }
+      if (!isList(json)) {
+        return this.errorResponse(c, "Unexpected response format", 400);
+      }
+
       const listResult = json as {
         type: string;
         value: Array<{
@@ -186,10 +191,6 @@ export class ReputationList extends BaseEndpoint {
           };
         }>;
       };
-
-      if (listResult.type !== "list") {
-        return this.errorResponse(c, "Unexpected response format", 400);
-      }
 
       const feedback = listResult.value.map((item) => ({
         client: item.value.client.value,
