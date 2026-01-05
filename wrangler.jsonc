@@ -51,5 +51,37 @@
       "tag": "v1",
       "new_sqlite_classes": ["UserDurableObject"]
     }
-  ]
+  ],
+  "env": {
+    "staging": {
+      "name": "stx402-staging",
+      "workers_dev": true,
+      "vars": {
+        "X402_FACILITATOR_URL": "https://facilitator.x402stacks.xyz",
+        "X402_NETWORK": "testnet",
+        "X402_SERVER_ADDRESS": "ST31JEZWX4S131326VKM05QKJ0TDGNVVE0DGNM4BP"
+      },
+      "kv_namespaces": [
+        {
+          "binding": "METRICS",
+          "id": "f17f2a7478934003adcc7afc1a8418f4"
+        },
+        {
+          "binding": "STORAGE",
+          "id": "39d50116da4643c3b47a6be2b5805bf9"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "USER_DO",
+            "class_name": "UserDurableObject"
+          }
+        ]
+      }
+    }
+  }
 }
