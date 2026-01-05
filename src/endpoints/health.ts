@@ -21,7 +21,11 @@ export class Health extends BaseEndpoint {
                     timestamp: { type: "string" as const } as const,
                     network: {
                       type: "string" as const,
-                      const: ["mainnet", "testnet"] as const,
+                      enum: ["mainnet", "testnet"] as const,
+                    } as const,
+                    environment: {
+                      type: "string" as const,
+                      enum: ["production", "staging"] as const,
                     } as const,
                   } as const,
                 } as const,
@@ -34,11 +38,13 @@ export class Health extends BaseEndpoint {
   };
 
   async handle(c: AppContext) {
+    const network = c.env.X402_NETWORK;
     return c.json({
       status: "ok",
       details: {
         timestamp: new Date().toISOString(),
-        network: c.env.X402_NETWORK,
+        network,
+        environment: network === "mainnet" ? "production" : "staging",
       },
     });
   }
