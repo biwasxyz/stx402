@@ -11,7 +11,8 @@ import { cors } from "hono/cors";
 // Health endpoints
 import { Health } from "./endpoints/health";
 import { Dashboard } from "./endpoints/dashboard";
-import { Archive2025Page } from "./endpoints/archive-2025";
+import { AboutPage } from "./endpoints/about";
+import { GuidePage } from "./endpoints/guide";
 
 // Stacks endpoints
 import { GetBnsName } from "./endpoints/getBnsName";
@@ -253,7 +254,8 @@ const trackMetrics = metricsMiddleware();
 // Health endpoints (free)
 openapi.get("/api/health", Health);
 openapi.get("/dashboard", Dashboard);
-openapi.get("/archive/2025", Archive2025Page);
+openapi.get("/about", AboutPage);
+openapi.get("/guide", GuidePage);
 
 // Stacks endpoints (paid)
 openapi.get("/api/stacks/get-bns-name/:address", paymentMiddleware, trackMetrics, GetBnsName as any);

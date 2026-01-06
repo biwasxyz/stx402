@@ -774,8 +774,8 @@ function generateDashboardHTML(data: {
 
     <div class="footer">
       <p>
-        <a href="/archive/2025">2025 Year in Review</a> |
-        Powered by <a href="https://x402.org" target="_blank">X402</a> |
+        <a href="/about">About X402</a> |
+        <a href="/guide">Endpoint Guide</a> |
         <a href="/" target="_blank">API Docs</a> |
         Built on <a href="https://stacks.co" target="_blank">Stacks</a>
       </p>
