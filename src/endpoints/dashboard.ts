@@ -702,10 +702,10 @@ function generateDashboardHTML(data: {
             <tr>
               <th data-sort="owner">Owner <span class="sort-icon">↕</span></th>
               <th data-sort="name">Name <span class="sort-icon">↕</span></th>
+              <th data-sort="category">Category <span class="sort-icon">↕</span></th>
               <th data-sort="host">Host <span class="sort-icon">↕</span></th>
               <th data-sort="path">Path <span class="sort-icon">↕</span></th>
               <th>URL</th>
-              <th data-sort="category">Category <span class="sort-icon">↕</span></th>
               <th data-sort="status">Status <span class="sort-icon">↕</span></th>
               <th data-sort="registered" class="sorted">Published <span class="sort-icon">↓</span></th>
               <th data-sort="updated">Updated <span class="sort-icon">↕</span></th>
@@ -737,6 +737,7 @@ function generateDashboardHTML(data: {
                 <tr data-owner="${entry.owner}" data-name="${entry.name}" data-url="${entry.url}" data-host="${host}" data-path="${path}" data-category="${entry.category || ""}" data-status="${entry.status}" data-registered="${registeredTs}" data-updated="${updatedTs}">
                   <td><a href="${explorerUrl}" target="_blank" class="owner-link" title="${entry.owner}">${ownerShort}</a></td>
                   <td><strong>${entry.name}</strong></td>
+                  <td class="cat-${(entry.category || "").toLowerCase()}">${entry.category || "-"}</td>
                   <td><span class="host-badge">${host}</span></td>
                   <td><span class="path-code">${path.length > 30 ? path.slice(0, 30) + "..." : path}</span></td>
                   <td>
@@ -747,7 +748,6 @@ function generateDashboardHTML(data: {
                       Copy
                     </button>
                   </td>
-                  <td>${entry.category || "-"}</td>
                   <td class="${statusClass}">${entry.status}</td>
                   <td>${registeredDisplay}</td>
                   <td>${updatedDisplay}</td>
