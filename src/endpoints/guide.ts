@@ -314,7 +314,7 @@ function generateGuideHTML(): string {
   <link rel="preconnect" href="https://rsms.me/">
   <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <style>
-    \${getNavCSS()}
+    ${getNavCSS()}
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -488,7 +488,7 @@ function generateGuideHTML(): string {
   </style>
 </head>
 <body>
-  \${getNavHTML("guide")}
+  ${getNavHTML("guide")}
   <div class="container">
     <h1>Endpoint Guide</h1>
     <p class="subtitle">168 endpoints across 19 categories - find what you need</p>

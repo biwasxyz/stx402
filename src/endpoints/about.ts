@@ -35,7 +35,7 @@ function generateAboutHTML(): string {
   <link rel="preconnect" href="https://rsms.me/">
   <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <style>
-    \${getNavCSS()}
+    ${getNavCSS()}
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -195,7 +195,7 @@ function generateAboutHTML(): string {
   </style>
 </head>
 <body>
-  \${getNavHTML("about")}
+  ${getNavHTML("about")}
   <div class="container">
     <h1>What is X402?</h1>
     <p class="subtitle">Micropayments for APIs, powered by the Stacks blockchain</p>
