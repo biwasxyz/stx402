@@ -48,9 +48,9 @@ function generateToolboxHTML(): string {
     }
 
     .container {
-      max-width: 800px;
+      max-width: 1600px;
       margin: 0 auto;
-      padding: 48px 24px;
+      padding: 24px;
     }
 
     h1 {
@@ -76,6 +76,7 @@ function generateToolboxHTML(): string {
       border-radius: 16px;
       padding: 32px;
       margin-bottom: 24px;
+      max-width: 800px;
     }
 
     .tool-card:last-child {
