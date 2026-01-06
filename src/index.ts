@@ -7,6 +7,7 @@
 import { fromHono } from "chanfana";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { getScalarHTML } from "./endpoints/scalarDocs";
 
 // Health endpoints
 import { Health } from "./endpoints/health";
@@ -241,9 +242,20 @@ app.use(
   })
 );
 
-// Setup OpenAPI registry
+// Serve themed Scalar API docs at root (aibtc.com branding)
+app.get("/", (c) => c.html(getScalarHTML("/openapi.json")));
+
+// Setup OpenAPI registry (disable built-in Swagger UI, we use Scalar)
 const openapi = fromHono(app, {
-  docs_url: "/",
+  docs_url: null,
+  openapi_url: "/openapi.json",
+  schema: {
+    info: {
+      title: "STX402 API",
+      version: "1.0.0",
+      description: "X402 micropayment-gated API endpoints on Stacks. Pay-per-use with STX, sBTC, or USDCx.",
+    },
+  },
 });
 
 const paymentMiddleware = x402PaymentMiddleware();
