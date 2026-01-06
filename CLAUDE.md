@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-STX402 is a Cloudflare Workers API providing **170 useful endpoints** via X402 micropayments.
+STX402 is a Cloudflare Workers API providing **165 useful endpoints** via X402 micropayments.
 
 **Vision**: A marketplace of useful API endpoints where the best ones surface to the top based on usage and earnings. Each endpoint is simple, composable, and pays for itself through micropayments.
 
@@ -65,7 +65,7 @@ X402_NETWORK=testnet X402_WORKER_URL=https://stx402-staging.whoabuddy.workers.de
 
 ## Architecture
 
-### Endpoint Categories (170 total)
+### Endpoint Categories (165 total)
 
 | Category | Count | Path Pattern | Tier | Description |
 |----------|-------|--------------|------|-------------|
@@ -79,16 +79,16 @@ X402_NETWORK=testnet X402_WORKER_URL=https://stx402-staging.whoabuddy.workers.de
 | Math | 6 | `/api/math/*` | simple | Mathematical operations |
 | Utility | 23 | `/api/util/*` | simple | General utilities |
 | Network | 6 | `/api/net/*` | simple | Network utilities |
-| Registry | 10 | `/api/registry/*` | ai | Endpoint registry management |
+| Registry | 7 | `/api/registry/*` | ai | Endpoint registry management |
 | KV Storage | 4 | `/api/kv/*` | storage_* | Stateful key-value storage |
-| Paste | 3 | `/api/paste/*` | storage_* | Text paste with short codes |
+| Paste | 2 | `/api/paste/*` | storage_* | Text paste with short codes |
 | Counter | 6 | `/api/counter/*` | storage_* | Atomic counters (Durable Objects) |
 | SQL | 3 | `/api/sql/*` | storage_* | Direct SQLite access (Durable Objects) |
-| Links | 5 | `/api/links/*` | storage_* | URL shortener with click tracking |
+| Links | 4 | `/api/links/*` | storage_* | URL shortener with click tracking |
 | Sync | 5 | `/api/sync/*` | storage_* | Distributed locks with auto-expiration |
 | Queue | 5 | `/api/queue/*` | storage_* | Job queue with priority and retries |
 | Memory | 5 | `/api/memory/*` | storage_ai | Agent memory with semantic search |
-| Agent | 16 | `/api/agent/*` | simple | ERC-8004 agent registry (identity, reputation, validation) |
+| Agent | 15 | `/api/agent/*` | simple | ERC-8004 agent registry (identity, reputation, validation) |
 
 ### Pricing Tiers
 

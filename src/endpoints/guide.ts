@@ -491,7 +491,7 @@ function generateGuideHTML(): string {
   ${getNavHTML("guide")}
   <div class="container">
     <h1><span class="accent">STX402</span> Guide</h1>
-    <p class="subtitle">168 endpoints across 19 categories - find what you need</p>
+    <p class="subtitle">165 endpoints across 19 categories - find what you need</p>
 
     <div class="intro">
       <p>
