@@ -187,25 +187,6 @@ function generateDashboardHTML(data: {
       -webkit-font-smoothing: antialiased;
     }
     .container { max-width: 1600px; margin: 0 auto; padding: 32px; }
-    .header-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 6px;
-    }
-    .logo {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, #f7931a 0%, #c2410c 100%);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 14px;
-      color: #000;
-      box-shadow: 0 4px 12px rgba(247, 147, 26, 0.3);
-    }
     h1 {
       font-size: 26px;
       font-weight: 600;
@@ -506,7 +487,6 @@ function generateDashboardHTML(data: {
     @media (max-width: 600px) {
       .container { padding: 16px; }
       h1 { font-size: 20px; }
-      .logo { width: 32px; height: 32px; font-size: 12px; }
       .subtitle { font-size: 12px; margin-bottom: 20px; }
       .section-nav { gap: 6px; margin-bottom: 20px; }
       .section-nav a { padding: 8px 12px; font-size: 12px; }
@@ -535,7 +515,6 @@ function generateDashboardHTML(data: {
     @media (max-width: 380px) {
       .summary { grid-template-columns: 1fr; }
       .card .value { font-size: 24px; }
-      .header-row { gap: 8px; }
       h1 { font-size: 18px; }
       .section-nav a { padding: 6px 10px; font-size: 11px; }
     }
@@ -551,10 +530,7 @@ function generateDashboardHTML(data: {
 <body>
   ${getNavHTML("dashboard")}
   <div class="container">
-    <div class="header-row">
-      <div class="logo">402</div>
-      <h1><span class="accent">STX402</span> Dashboard</h1>
-    </div>
+    <h1><span class="accent">STX402</span> Dashboard</h1>
     <p class="subtitle">Real-time metrics for X402 payment-gated endpoints on Stacks</p>
 
     <nav class="section-nav">
