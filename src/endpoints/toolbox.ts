@@ -390,6 +390,143 @@ function generateToolboxHTML(): string {
     .tool-footer a:hover {
       text-decoration: underline;
     }
+
+    /* Wallet connection */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .page-header .title-section {
+      flex: 1;
+    }
+
+    .wallet-section {
+      flex-shrink: 0;
+    }
+
+    .connect-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #f7931a 0%, #c2410c 100%);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .connect-btn:hover {
+      opacity: 0.9;
+    }
+
+    .connect-btn:active {
+      transform: scale(0.98);
+    }
+
+    .connect-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .wallet-connected {
+      position: relative;
+    }
+
+    .wallet-address-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fafafa;
+      font-size: 13px;
+      font-family: 'SF Mono', Monaco, monospace;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .wallet-address-btn:hover {
+      border-color: #f7931a;
+    }
+
+    .wallet-address-btn::after {
+      content: "▼";
+      font-size: 10px;
+      color: #71717a;
+      transition: transform 0.15s ease;
+    }
+
+    .wallet-address-btn.open::after {
+      transform: rotate(180deg);
+    }
+
+    .wallet-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 160px;
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all 0.15s ease;
+      z-index: 100;
+    }
+
+    .wallet-dropdown.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .wallet-dropdown button {
+      display: block;
+      width: 100%;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: #a1a1aa;
+      font-size: 13px;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .wallet-dropdown button:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fafafa;
+    }
+
+    .wallet-dropdown button.disconnect {
+      color: #ef4444;
+    }
+
+    .wallet-dropdown button.disconnect:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    @media (max-width: 500px) {
+      .page-header {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+      .wallet-section {
+        align-self: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -397,8 +534,13 @@ function generateToolboxHTML(): string {
 
   <div class="container">
     <div class="page-header">
-      <h1>Toolbox</h1>
-      <p class="subtitle">Interactive tools for the curious</p>
+      <div class="title-section">
+        <h1>Toolbox</h1>
+        <p class="subtitle">Interactive tools for the curious</p>
+      </div>
+      <div class="wallet-section" id="wallet-section">
+        <button class="connect-btn" id="connect-btn">Connect Wallet</button>
+      </div>
     </div>
 
     <div class="tool-card">
@@ -648,6 +790,115 @@ function generateToolboxHTML(): string {
       const div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
+    }
+  </script>
+
+  <!-- Stacks Connect for wallet authentication -->
+  <script src="https://cdn.jsdelivr.net/npm/@stacks/connect@8/dist/index.global.js"></script>
+  <script>
+    // Wallet connection logic using @stacks/connect v8
+    const walletSection = document.getElementById('wallet-section');
+    const connectBtn = document.getElementById('connect-btn');
+
+    // Truncate address for display
+    function truncateAddress(address) {
+      if (!address || address.length < 12) return address;
+      return address.slice(0, 5) + '...' + address.slice(-5);
+    }
+
+    // Update wallet UI based on connection state
+    function updateWalletUI() {
+      const { isConnected, getLocalStorage } = StacksConnect;
+
+      if (isConnected()) {
+        const data = getLocalStorage();
+        const stxAddress = data?.addresses?.stx?.[0]?.address;
+
+        if (stxAddress) {
+          walletSection.innerHTML = \`
+            <div class="wallet-connected">
+              <button class="wallet-address-btn" id="wallet-address-btn">
+                \${truncateAddress(stxAddress)}
+              </button>
+              <div class="wallet-dropdown" id="wallet-dropdown">
+                <button id="copy-address-btn" data-address="\${stxAddress}">Copy Address</button>
+                <button class="disconnect" id="disconnect-btn">Disconnect</button>
+              </div>
+            </div>
+          \`;
+
+          // Setup dropdown toggle
+          const addressBtn = document.getElementById('wallet-address-btn');
+          const dropdown = document.getElementById('wallet-dropdown');
+
+          addressBtn.addEventListener('click', () => {
+            addressBtn.classList.toggle('open');
+            dropdown.classList.toggle('open');
+          });
+
+          // Close dropdown when clicking outside
+          document.addEventListener('click', (e) => {
+            if (!e.target.closest('.wallet-connected')) {
+              addressBtn.classList.remove('open');
+              dropdown.classList.remove('open');
+            }
+          });
+
+          // Copy address
+          document.getElementById('copy-address-btn').addEventListener('click', async (e) => {
+            const address = e.target.dataset.address;
+            await navigator.clipboard.writeText(address);
+            e.target.textContent = 'Copied!';
+            setTimeout(() => {
+              e.target.textContent = 'Copy Address';
+            }, 2000);
+          });
+
+          // Disconnect
+          document.getElementById('disconnect-btn').addEventListener('click', () => {
+            handleDisconnect();
+          });
+
+          return;
+        }
+      }
+
+      // Not connected - show connect button
+      walletSection.innerHTML = '<button class="connect-btn" id="connect-btn">Connect Wallet</button>';
+      document.getElementById('connect-btn').addEventListener('click', handleConnect);
+    }
+
+    // Handle connect
+    async function handleConnect() {
+      const { connect } = StacksConnect;
+      const btn = document.getElementById('connect-btn');
+
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+
+      try {
+        await connect();
+        updateWalletUI();
+      } catch (err) {
+        console.error('Wallet connect error:', err);
+        btn.disabled = false;
+        btn.textContent = 'Connect Wallet';
+      }
+    }
+
+    // Handle disconnect
+    function handleDisconnect() {
+      const { disconnect } = StacksConnect;
+      disconnect();
+      updateWalletUI();
+    }
+
+    // Initialize on page load
+    connectBtn.addEventListener('click', handleConnect);
+
+    // Check if already connected
+    if (typeof StacksConnect !== 'undefined') {
+      updateWalletUI();
     }
   </script>
 </body>
