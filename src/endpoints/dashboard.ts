@@ -486,8 +486,6 @@ function generateDashboardHTML(data: {
     /* Mobile optimizations */
     @media (max-width: 600px) {
       .container { padding: 16px; }
-      h1 { font-size: 20px; }
-      .subtitle { font-size: 12px; margin-bottom: 20px; }
       .section-nav { gap: 6px; margin-bottom: 20px; }
       .section-nav a { padding: 8px 12px; font-size: 12px; }
       .summary { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -515,7 +513,6 @@ function generateDashboardHTML(data: {
     @media (max-width: 380px) {
       .summary { grid-template-columns: 1fr; }
       .card .value { font-size: 24px; }
-      h1 { font-size: 18px; }
       .section-nav a { padding: 6px 10px; font-size: 11px; }
     }
 
