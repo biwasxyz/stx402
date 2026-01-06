@@ -411,8 +411,8 @@ openapi.post("/api/registry/update", paymentMiddleware, trackMetrics, RegistryUp
 openapi.post("/api/registry/delete", paymentMiddleware, trackMetrics, RegistryDelete as any);
 openapi.post("/api/registry/my-endpoints", paymentMiddleware, trackMetrics, RegistryMyEndpoints as any);
 openapi.post("/api/registry/transfer", paymentMiddleware, trackMetrics, RegistryTransfer as any);
-openapi.post("/api/admin/registry/verify", paymentMiddleware, trackMetrics, RegistryAdminVerify as any);
-openapi.post("/api/admin/registry/pending", paymentMiddleware, trackMetrics, RegistryAdminPending as any);
+openapi.post("/api/admin/registry/verify", RegistryAdminVerify as any); // Free - admin auth required
+openapi.post("/api/admin/registry/pending", RegistryAdminPending as any); // Free - admin auth required
 
 // KV Storage endpoints (paid)
 openapi.post("/api/kv/set", paymentMiddleware, trackMetrics, KvSet as any);

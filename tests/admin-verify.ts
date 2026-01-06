@@ -2,6 +2,7 @@
  * Registry Admin Verification Script
  *
  * List pending endpoints and verify/reject them as admin.
+ * Admin endpoints are free (no payment required) - only admin address check.
  *
  * Usage:
  *   bun run tests/admin-verify.ts list
@@ -9,14 +10,13 @@
  *   bun run tests/admin-verify.ts reject <url> [url...]
  *
  * Environment:
- *   X402_PK       - Server mnemonic (admin wallet)
- *   X402_NETWORK  - "mainnet" or "testnet" (default: mainnet)
+ *   X402_PK         - Server mnemonic (to derive admin address)
+ *   X402_NETWORK    - "mainnet" or "testnet" (default: mainnet)
  *   X402_WORKER_URL - API URL (default: https://stx402.com)
- *   VERBOSE=1     - Enable verbose logging
+ *   VERBOSE=1       - Enable verbose logging
  */
 
-import type { TokenType, NetworkType } from "x402-stacks";
-import { X402PaymentClient } from "x402-stacks";
+import type { NetworkType } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import { COLORS } from "./_shared_utils";
 
@@ -28,7 +28,6 @@ const VERBOSE = process.env.VERBOSE === "1";
 const X402_PK = process.env.X402_PK;
 const X402_NETWORK = (process.env.X402_NETWORK || "mainnet") as NetworkType;
 const X402_WORKER_URL = process.env.X402_WORKER_URL || "https://stx402.com";
-const TOKEN_TYPE: TokenType = "STX";
 
 // =============================================================================
 // Helpers
@@ -58,7 +57,7 @@ ${COLORS.cyan}Usage:${COLORS.reset}
   bun run tests/admin-verify.ts reject <url> [url...]   Reject one or more endpoints
 
 ${COLORS.cyan}Environment:${COLORS.reset}
-  X402_PK         Server mnemonic (required)
+  X402_PK         Server mnemonic (required, to derive admin address)
   X402_NETWORK    "mainnet" or "testnet" (default: mainnet)
   X402_WORKER_URL API URL (default: https://stx402.com)
   VERBOSE=1       Enable verbose logging
@@ -72,78 +71,32 @@ ${COLORS.cyan}Examples:${COLORS.reset}
 }
 
 // =============================================================================
-// X402 Payment Flow
+// API Requests (no payment required - admin endpoints are free)
 // =============================================================================
 
-interface PaymentRequired {
-  maxAmountRequired: string;
-  resource: string;
-  payTo: string;
-  network: "mainnet" | "testnet";
-  nonce: string;
-  expiresAt: string;
-  tokenType: TokenType;
-}
-
-async function makeX402Request(
+async function makeRequest(
   endpoint: string,
-  method: "GET" | "POST",
-  x402Client: X402PaymentClient,
-  body?: unknown
-): Promise<{ status: number; data: unknown; headers: Headers }> {
+  body: unknown
+): Promise<{ status: number; data: unknown }> {
   const fullUrl = `${X402_WORKER_URL}${endpoint}`;
-  const tokenParam = endpoint.includes("?")
-    ? `&tokenType=${TOKEN_TYPE}`
-    : `?tokenType=${TOKEN_TYPE}`;
 
-  log(`Requesting ${method} ${endpoint}...`);
+  log(`POST ${endpoint}...`);
 
-  const initialRes = await fetch(`${fullUrl}${tokenParam}`, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  // If not 402, return as-is
-  if (initialRes.status !== 402) {
-    let data: unknown;
-    const text = await initialRes.text();
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
-    return { status: initialRes.status, data, headers: initialRes.headers };
-  }
-
-  // Get payment requirements
-  const paymentText = await initialRes.text();
-  const paymentReq: PaymentRequired = JSON.parse(paymentText);
-  log(`Payment required: ${paymentReq.maxAmountRequired} ${paymentReq.tokenType}`);
-
-  // Sign payment
-  const signResult = await x402Client.signPayment(paymentReq);
-  log("Payment signed");
-
-  // Retry with payment
-  const paidRes = await fetch(`${fullUrl}${tokenParam}`, {
-    method,
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      "X-PAYMENT": signResult.signedTransaction,
-      "X-PAYMENT-TOKEN-TYPE": TOKEN_TYPE,
-    },
-    body: body ? JSON.stringify(body) : undefined,
+  const res = await fetch(fullUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   let data: unknown;
-  const responseText = await paidRes.text();
+  const text = await res.text();
   try {
-    data = JSON.parse(responseText);
+    data = JSON.parse(text);
   } catch {
-    data = responseText;
+    data = text;
   }
-  return { status: paidRes.status, data, headers: paidRes.headers };
+
+  return { status: res.status, data };
 }
 
 // =============================================================================
@@ -165,18 +118,12 @@ interface PendingEntry {
   };
 }
 
-async function listPending(
-  x402Client: X402PaymentClient,
-  adminAddress: string
-): Promise<boolean> {
+async function listPending(adminAddress: string): Promise<boolean> {
   console.log(`\n${COLORS.bright}Listing Pending Endpoints${COLORS.reset}\n`);
 
-  const { status, data } = await makeX402Request(
-    "/api/admin/registry/pending",
-    "POST",
-    x402Client,
-    { adminAddress }
-  );
+  const { status, data } = await makeRequest("/api/admin/registry/pending", {
+    adminAddress,
+  });
 
   if (status === 403) {
     logError(`Not authorized - adminAddress doesn't match server address`);
@@ -218,7 +165,6 @@ async function listPending(
 }
 
 async function verifyOrReject(
-  x402Client: X402PaymentClient,
   adminAddress: string,
   url: string,
   action: "verify" | "reject"
@@ -228,12 +174,11 @@ async function verifyOrReject(
   console.log(`  URL: ${url}`);
   console.log(`  Action: ${action}\n`);
 
-  const { status, data } = await makeX402Request(
-    "/api/admin/registry/verify",
-    "POST",
-    x402Client,
-    { url, action, adminAddress }
-  );
+  const { status, data } = await makeRequest("/api/admin/registry/verify", {
+    url,
+    action,
+    adminAddress,
+  });
 
   if (status === 403) {
     logError(`Not authorized - adminAddress doesn't match server address`);
@@ -291,17 +236,12 @@ async function main() {
     process.exit(1);
   }
 
-  // Initialize admin wallet
-  const { address: adminAddress, key } = await deriveChildAccount(
+  // Derive admin address from mnemonic
+  const { address: adminAddress } = await deriveChildAccount(
     X402_NETWORK,
     X402_PK,
     0
   );
-
-  const x402Client = new X402PaymentClient({
-    network: X402_NETWORK,
-    privateKey: key,
-  });
 
   console.log(`${COLORS.gray}Admin: ${adminAddress}${COLORS.reset}`);
   console.log(`${COLORS.gray}Network: ${X402_NETWORK}${COLORS.reset}`);
@@ -311,7 +251,7 @@ async function main() {
 
   switch (command) {
     case "list":
-      success = await listPending(x402Client, adminAddress);
+      success = await listPending(adminAddress);
       break;
 
     case "verify":
@@ -325,7 +265,7 @@ async function main() {
 
       let successCount = 0;
       for (const url of urls) {
-        const result = await verifyOrReject(x402Client, adminAddress, url, command);
+        const result = await verifyOrReject(adminAddress, url, command);
         if (result) successCount++;
       }
 
