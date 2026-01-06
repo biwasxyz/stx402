@@ -81,13 +81,14 @@ export function getNavCSS(): string {
   `;
 }
 
-export type ActivePage = "docs" | "dashboard" | "guide" | "about";
+export type ActivePage = "docs" | "dashboard" | "guide" | "toolbox" | "about";
 
 export function getNavHTML(activePage: ActivePage): string {
   const links = [
     { href: "/", label: "API Docs", page: "docs" as const },
     { href: "/dashboard", label: "Dashboard", page: "dashboard" as const },
     { href: "/guide", label: "Guide", page: "guide" as const },
+    { href: "/toolbox", label: "Toolbox", page: "toolbox" as const },
     { href: "/about", label: "About", page: "about" as const },
   ];
 

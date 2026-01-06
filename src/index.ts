@@ -14,6 +14,7 @@ import { Health } from "./endpoints/health";
 import { Dashboard } from "./endpoints/dashboard";
 import { AboutPage } from "./endpoints/about";
 import { GuidePage } from "./endpoints/guide";
+import { ToolboxPage } from "./endpoints/toolbox";
 
 // Stacks endpoints
 import { GetBnsName } from "./endpoints/getBnsName";
@@ -268,6 +269,7 @@ openapi.get("/api/health", Health);
 openapi.get("/dashboard", Dashboard);
 openapi.get("/about", AboutPage);
 openapi.get("/guide", GuidePage);
+openapi.get("/toolbox", ToolboxPage);
 
 // Stacks endpoints (paid)
 openapi.get("/api/stacks/get-bns-name/:address", paymentMiddleware, trackMetrics, GetBnsName as any);
