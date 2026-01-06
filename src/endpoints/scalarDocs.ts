@@ -125,10 +125,8 @@ export function getScalarHTML(specUrl: string): string {
 
     /* Custom navigation bar */
     .stx402-nav {
-      position: fixed;
+      position: sticky;
       top: 0;
-      left: 0;
-      right: 0;
       height: 48px;
       background: #09090b;
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -173,10 +171,7 @@ export function getScalarHTML(specUrl: string): string {
       color: #f7931a;
       background: rgba(247, 147, 26, 0.12);
     }
-    /* Push Scalar content below nav */
-    .scalar-app {
-      margin-top: 48px !important;
-    }
+    /* No margin needed - sticky nav stays in document flow */
 
     /* Hide Scalar's mobile hamburger menu - we have our own nav */
     .scalar-app .sidebar-toggle,
