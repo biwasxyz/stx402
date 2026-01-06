@@ -46,7 +46,7 @@ export function getScalarHTML(specUrl: string): string {
 
       /* Links and interactive elements */
       --scalar-color-blue: #f7931a;
-      --scalar-color-green: #22c55e;
+      --scalar-color-green: #3b82f6;  /* POST uses green var, override to brand blue */
       --scalar-color-red: #ef4444;
       --scalar-color-yellow: #f7931a;
       --scalar-color-orange: #f7931a;
