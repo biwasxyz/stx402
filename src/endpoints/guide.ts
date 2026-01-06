@@ -500,6 +500,15 @@ function generateGuideHTML(): string {
       </p>
     </div>
 
+    <div class="intro" style="border-color: #8b5cf6;">
+      <p>
+        <strong style="color: #8b5cf6;">&#128274; Per-Payer Namespacing:</strong> Storage endpoints
+        (KV, SQL, Counter, Links, Sync, Queue, Memory, Paste) are automatically isolated by your
+        payment address. Your data is private — no configuration needed. Two users calling the
+        same endpoint get their own separate storage.
+      </p>
+    </div>
+
     <div class="search-container">
       <input type="text" class="search-input" id="search" placeholder="Search categories or endpoints (e.g., sha256, json, stacks)" autocomplete="off" />
       <div class="search-results" id="search-results"></div>

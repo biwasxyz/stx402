@@ -289,6 +289,11 @@ function generateAboutHTML(): string {
         <h4>Ownership</h4>
         <p>Transfer endpoint ownership via SIP-018 signatures. Your endpoint, your rules.</p>
       </div>
+      <div class="benefit">
+        <div class="benefit-icon">&#128100;</div>
+        <h4>Payment = Identity</h4>
+        <p>Your payment address provides automatic tenant isolation. Storage endpoints are private to you — no accounts needed.</p>
+      </div>
     </div>
 
     <h2>Getting Started</h2>
