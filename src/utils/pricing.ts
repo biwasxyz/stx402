@@ -86,7 +86,7 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/ai/grammar-check": "ai",
   "/api/ai/question-answer": "ai",
 
-  // === TEXT ENDPOINTS (24) ===
+  // === TEXT ENDPOINTS (26) ===
   "/api/text/base64-encode": "simple",
   "/api/text/base64-decode": "simple",
   "/api/text/sha256": "simple",
@@ -111,6 +111,8 @@ export const ENDPOINT_TIERS: Record<string, PricingTier> = {
   "/api/text/validate-url": "simple",
   "/api/text/diff": "simple",
   "/api/text/unicode-info": "simple",
+  "/api/text/compress": "simple",
+  "/api/text/decompress": "simple",
 
   // === DATA ENDPOINTS (8) ===
   "/api/data/csv-to-json": "simple",

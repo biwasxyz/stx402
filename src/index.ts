@@ -90,6 +90,8 @@ import { TextLoremIpsum } from "./endpoints/textLoremIpsum";
 import { TextValidateUrl } from "./endpoints/textValidateUrl";
 import { TextDiff } from "./endpoints/textDiff";
 import { TextUnicodeInfo } from "./endpoints/textUnicodeInfo";
+import { TextCompress } from "./endpoints/textCompress";
+import { TextDecompress } from "./endpoints/textDecompress";
 
 // Data endpoints
 import { DataCsvToJson } from "./endpoints/dataCsvToJson";
@@ -370,6 +372,8 @@ openapi.get("/api/text/lorem-ipsum", paymentMiddleware, trackMetrics, TextLoremI
 openapi.get("/api/text/validate-url", paymentMiddleware, trackMetrics, TextValidateUrl as any);
 openapi.post("/api/text/diff", paymentMiddleware, trackMetrics, TextDiff as any);
 openapi.post("/api/text/unicode-info", paymentMiddleware, trackMetrics, TextUnicodeInfo as any);
+openapi.post("/api/text/compress", paymentMiddleware, trackMetrics, TextCompress as any);
+openapi.post("/api/text/decompress", paymentMiddleware, trackMetrics, TextDecompress as any);
 
 // Data endpoints (paid)
 openapi.post("/api/data/csv-to-json", paymentMiddleware, trackMetrics, DataCsvToJson as any);
