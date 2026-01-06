@@ -38,8 +38,8 @@ export const testDecompress = createEndpointTest({
   method: "POST",
   body: {
     // "Hello, World!" compressed with gzip and base64 encoded
-    // Generated via: echo -n "Hello, World!" | gzip | base64
-    compressed: "H4sIAAAAAAAAA/NIzcnJ11EIzy/KSYlRBAB/YMWCDgAAAA==",
+    // Generated via Node: gzipSync(Buffer.from('Hello, World!')).toString('base64')
+    compressed: "H4sIAAAAAAAAA/NIzcnJ11EIzy/KSVEEANDDSuwNAAAA",
     algorithm: "gzip",
   },
   validateResponse: (data: unknown, tokenType) => {
