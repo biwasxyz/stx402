@@ -188,13 +188,13 @@ function generateDashboardHTML(data: {
     }
     .container { max-width: 1600px; margin: 0 auto; padding: 32px; }
     h1 {
-      font-size: 26px;
-      font-weight: 600;
+      font-size: 32px;
+      font-weight: 700;
       color: var(--text-primary);
-      letter-spacing: -0.02em;
+      margin-bottom: 8px;
     }
     h1 .accent { color: var(--accent); }
-    .subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 14px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 18px; }
     .warning {
       background: #422006;
       border: 1px solid #f59e0b;
