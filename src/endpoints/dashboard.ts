@@ -154,24 +154,6 @@ function generateDashboardHTML(data: {
   // Calculate max for daily chart (use at least 1 to avoid division by zero)
   const maxDailyCalls = Math.max(...dailyStats.map((d) => d.calls), 1);
 
-  // Sort categories by calls for the chart
-  const sortedCategories = Object.entries(categoryStats)
-    .sort((a, b) => b[1].calls - a[1].calls);
-  const maxCategoryCalls = Math.max(...sortedCategories.map(([, s]) => s.calls), 1);
-
-  // Simplified category colors (A11Y compliant, 4 color groups)
-  // Orange: blockchain, Purple: AI, Cyan: utilities, Blue: structured data
-  const categoryColors: Record<string, string> = {
-    Stacks: "#f7931a",  // Orange - blockchain
-    Crypto: "#fb923c",  // Light orange - blockchain
-    Ai: "#a855f7",      // Purple - AI premium
-    Text: "#06b6d4",    // Cyan - utilities
-    Util: "#22d3ee",    // Light cyan - utilities
-    Random: "#0ea5e9",  // Sky blue - utilities
-    Data: "#3b82f6",    // Blue - structured
-    Math: "#6366f1",    // Indigo - structured
-  };
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -296,15 +278,6 @@ function generateDashboardHTML(data: {
       margin-bottom: 16px;
       color: #fff;
     }
-    .charts-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 32px;
-    }
-    @media (max-width: 900px) {
-      .charts-row { grid-template-columns: 1fr; }
-    }
     .chart-container {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -341,50 +314,6 @@ function generateDashboardHTML(data: {
       font-size: 11px;
       color: #a1a1aa;
       font-weight: 500;
-    }
-    .horiz-bar-chart {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .horiz-bar-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .horiz-bar-label {
-      width: 60px;
-      font-size: 12px;
-      color: #a1a1aa;
-      text-align: right;
-      flex-shrink: 0;
-    }
-    .horiz-bar-track {
-      flex: 1;
-      height: 24px;
-      background: #27272a;
-      border-radius: 4px;
-      overflow: hidden;
-      position: relative;
-    }
-    .horiz-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.3s;
-      display: flex;
-      align-items: center;
-      padding-left: 8px;
-    }
-    .horiz-bar-value {
-      font-size: 11px;
-      color: #fff;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    .horiz-bar-count {
-      font-size: 11px;
-      color: #71717a;
-      margin-left: 8px;
     }
     table {
       width: 100%;
@@ -590,11 +519,6 @@ function generateDashboardHTML(data: {
       .chart-container { padding: 16px; border-radius: 12px; }
       .bar-chart { gap: 4px; height: 100px; }
       .bar-value, .bar-label { font-size: 9px; }
-      .horiz-bar-label { width: 50px; font-size: 10px; }
-      .horiz-bar-track { height: 20px; }
-      .horiz-bar-value { font-size: 9px; }
-      .horiz-bar-count { display: none; }
-      .charts-row { gap: 16px; }
       .table-container { border-radius: 12px; }
       table { font-size: 11px; }
       th, td { padding: 8px 10px; }
@@ -692,52 +616,6 @@ function generateDashboardHTML(data: {
             </div>
           `;
         }).join("")}
-      </div>
-    </div>
-
-    <div class="charts-row">
-      <div class="chart-container">
-        <h2 class="section-title">Calls by Category</h2>
-        <div class="horiz-bar-chart">
-          ${sortedCategories.map(([cat, stats]) => {
-            const widthPct = Math.max((stats.calls / maxCategoryCalls) * 100, 2);
-            const color = categoryColors[cat] || "#71717a";
-            return `
-              <div class="horiz-bar-row">
-                <div class="horiz-bar-label">${cat}</div>
-                <div class="horiz-bar-track">
-                  <div class="horiz-bar-fill" style="width: ${widthPct}%; background: ${color};">
-                    <span class="horiz-bar-value">${stats.calls.toLocaleString()}</span>
-                  </div>
-                </div>
-                <span class="horiz-bar-count">${stats.count} endpoints</span>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </div>
-
-      <div class="chart-container">
-        <h2 class="section-title">Earnings by Category (STX)</h2>
-        <div class="horiz-bar-chart">
-          ${sortedCategories
-            .sort((a, b) => b[1].stx - a[1].stx)
-            .map(([cat, stats]) => {
-              const maxStx = Math.max(...sortedCategories.map(([, s]) => s.stx), 0.0001);
-              const widthPct = Math.max((stats.stx / maxStx) * 100, 2);
-              const color = categoryColors[cat] || "#71717a";
-              return `
-                <div class="horiz-bar-row">
-                  <div class="horiz-bar-label">${cat}</div>
-                  <div class="horiz-bar-track">
-                    <div class="horiz-bar-fill" style="width: ${widthPct}%; background: ${color};">
-                      <span class="horiz-bar-value">${stats.stx.toFixed(4)} STX</span>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join("")}
-        </div>
       </div>
     </div>
 
