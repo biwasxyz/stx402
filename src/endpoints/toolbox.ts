@@ -76,7 +76,6 @@ function generateToolboxHTML(): string {
       border-radius: 16px;
       padding: 32px;
       margin-bottom: 24px;
-      max-width: 800px;
     }
 
     .tool-card:last-child {

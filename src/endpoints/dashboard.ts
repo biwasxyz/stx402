@@ -187,7 +187,7 @@ function generateDashboardHTML(data: {
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 1600px; margin: 0 auto; padding: 32px; }
+    .container { max-width: 1600px; margin: 0 auto; padding: 24px; }
     h1 {
       font-size: 32px;
       font-weight: 700;
