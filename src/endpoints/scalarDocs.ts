@@ -96,12 +96,18 @@ export function getScalarHTML(specUrl: string): string {
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    /* HTTP method badges - orange theme */
-    .scalar-app [data-method="GET"] {
+    /* HTTP method badges - brand colors */
+    [data-method="GET"],
+    .scalar-api-client__send-request-button[data-method="GET"],
+    .http-method--get,
+    .scalar-app .http-method--get {
       background: rgba(247, 147, 26, 0.15) !important;
       color: #f7931a !important;
     }
-    .scalar-app [data-method="POST"] {
+    [data-method="POST"],
+    .scalar-api-client__send-request-button[data-method="POST"],
+    .http-method--post,
+    .scalar-app .http-method--post {
       background: rgba(59, 130, 246, 0.15) !important;
       color: #3b82f6 !important;
     }
