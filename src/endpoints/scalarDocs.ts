@@ -178,6 +178,14 @@ export function getScalarHTML(specUrl: string): string {
       margin-top: 48px !important;
     }
 
+    /* Hide Scalar's mobile hamburger menu - we have our own nav */
+    .scalar-app .sidebar-toggle,
+    .scalar-app .mobile-header,
+    .scalar-app button[aria-label="Open menu"],
+    .scalar-app .t-doc__mobile-menu {
+      display: none !important;
+    }
+
     /* Mobile responsive styles */
     @media (max-width: 640px) {
       .stx402-nav {
@@ -187,11 +195,17 @@ export function getScalarHTML(specUrl: string): string {
         display: none;
       }
       .stx402-nav-links {
-        gap: 4px;
+        gap: 2px;
+        flex-shrink: 0;
       }
       .stx402-nav-link {
         font-size: 12px;
         padding: 6px 8px;
+        white-space: nowrap;
+      }
+      /* Hide "API Docs" on mobile - already on this page */
+      .stx402-nav-link.active {
+        display: none;
       }
     }
     @media (max-width: 400px) {
