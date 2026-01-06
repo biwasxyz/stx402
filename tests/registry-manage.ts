@@ -5,7 +5,7 @@
  *
  * Usage:
  *   bun run tests/registry-manage.ts list
- *   bun run tests/registry-manage.ts delete <url>
+ *   bun run tests/registry-manage.ts delete <url> [url...]
  *
  * Environment:
  *   X402_CLIENT_PK  - Client mnemonic (your wallet)
@@ -54,8 +54,8 @@ function printUsage() {
 ${COLORS.bright}Registry Management${COLORS.reset}
 
 ${COLORS.cyan}Usage:${COLORS.reset}
-  bun run tests/registry-manage.ts list              List your registered endpoints
-  bun run tests/registry-manage.ts delete <url>      Delete an endpoint you own
+  bun run tests/registry-manage.ts list                    List your registered endpoints
+  bun run tests/registry-manage.ts delete <url> [url...]   Delete one or more endpoints
 
 ${COLORS.cyan}Environment:${COLORS.reset}
   X402_CLIENT_PK  Client mnemonic (required)
@@ -66,6 +66,7 @@ ${COLORS.cyan}Environment:${COLORS.reset}
 ${COLORS.cyan}Examples:${COLORS.reset}
   X402_CLIENT_PK="..." bun run tests/registry-manage.ts list
   X402_CLIENT_PK="..." bun run tests/registry-manage.ts delete https://example.com/api/endpoint
+  X402_CLIENT_PK="..." bun run tests/registry-manage.ts delete https://a.com/api https://b.com/api
 
   # Against testnet/staging
   X402_NETWORK=testnet X402_WORKER_URL=http://localhost:8787 X402_CLIENT_PK="..." bun run tests/registry-manage.ts list
@@ -415,13 +416,21 @@ async function main() {
       break;
 
     case "delete": {
-      const url = args[1];
-      if (!url) {
-        logError(`URL is required for delete command`);
+      const urls = args.slice(1);
+      if (urls.length === 0) {
+        logError(`At least one URL is required for delete command`);
         printUsage();
         process.exit(1);
       }
-      success = await deleteEndpoint(x402Client, ownerAddress, privateKey, url);
+
+      let successCount = 0;
+      for (const url of urls) {
+        const result = await deleteEndpoint(x402Client, ownerAddress, privateKey, url);
+        if (result) successCount++;
+      }
+
+      console.log(`\n${COLORS.bright}Summary:${COLORS.reset} ${successCount}/${urls.length} deleted successfully`);
+      success = successCount === urls.length;
       break;
     }
 
