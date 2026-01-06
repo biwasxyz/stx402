@@ -44,11 +44,12 @@ function generateAboutHTML(): string {
       min-height: 100vh;
       line-height: 1.6;
     }
-    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .container { max-width: 1600px; margin: 0 auto; padding: 24px; }
+    h1 .accent { color: #f7931a; }
     h1 {
       font-size: 32px;
       font-weight: 700;
-      color: #f7931a;
+      color: #fafafa;
       margin-bottom: 8px;
     }
     .subtitle { color: #71717a; margin-bottom: 32px; font-size: 18px; }
@@ -196,7 +197,7 @@ function generateAboutHTML(): string {
 <body>
   ${getNavHTML("about")}
   <div class="container">
-    <h1>What is X402?</h1>
+    <h1><span class="accent">STX402</span> About</h1>
     <p class="subtitle">Micropayments for APIs, powered by the Stacks blockchain</p>
 
     <h2>The Problem</h2>
