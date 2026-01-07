@@ -71,21 +71,26 @@ interface MetricsData {
 
 // Read current metrics from KV
 console.log("Reading metrics from KV...");
-console.log("(Requires CLOUDFLARE_API_TOKEN environment variable)\n");
+console.log("(Uses CLOUDFLARE_API_TOKEN from .env)\n");
 let metricsJson: string;
 try {
   metricsJson = execSync(
-    `npx wrangler kv key get "${METRICS_KEY}" --binding METRICS --text --remote ${envArg}`,
+    `npx wrangler kv key get "${METRICS_KEY}" --env-file .env --binding METRICS --text --remote ${envArg}`,
     { encoding: "utf-8", maxBuffer: 10 * 1024 * 1024, cwd: import.meta.dir + "/.." }
   );
 } catch (e: any) {
-  if (e.message?.includes("CLOUDFLARE_API_TOKEN")) {
-    console.error("Missing CLOUDFLARE_API_TOKEN. Set it with:");
-    console.error("  export CLOUDFLARE_API_TOKEN=your_token_here");
-  } else if (e.message?.includes("Value not found")) {
+  const msg = e.message || e.toString();
+  if (msg.includes("CLOUDFLARE_API_TOKEN")) {
+    console.error("Missing CLOUDFLARE_API_TOKEN in .env file.");
+    console.error("Add: CLOUDFLARE_API_TOKEN=your_token_here");
+  } else if (msg.includes("Unable to authenticate") || msg.includes("10001")) {
+    console.error("Authentication failed. Check your CLOUDFLARE_API_TOKEN in .env");
+    console.error("Token needs 'Account.Workers KV Storage' permissions.");
+    console.error("Create at: https://dash.cloudflare.com/profile/api-tokens");
+  } else if (msg.includes("Value not found")) {
     console.error("No metrics found in KV. Nothing to clean up!");
   } else {
-    console.error("Failed to read metrics from KV:", e.message);
+    console.error("Failed to read metrics from KV:", msg);
   }
   process.exit(1);
 }
@@ -216,7 +221,7 @@ if (!shouldApply) {
 
   try {
     execSync(
-      `npx wrangler kv key put "${METRICS_KEY}" --path "${tempFile}" --binding METRICS --remote ${envArg}`,
+      `npx wrangler kv key put "${METRICS_KEY}" --path "${tempFile}" --env-file .env --binding METRICS --remote ${envArg}`,
       { stdio: "inherit", cwd: import.meta.dir + "/.." }
     );
     console.log("\nMetrics cleaned successfully!");
