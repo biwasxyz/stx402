@@ -1,6 +1,9 @@
 title: STX402 API Documentation
 description: Cloudflare Workers API with X402 micropayments - 171 endpoints
-theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs
+
+plugins:
+  - jekyll-remote-theme
 
 url: https://whoabuddy.github.io
 baseurl: /stx402
