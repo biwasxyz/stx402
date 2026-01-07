@@ -535,7 +535,7 @@ const textEndpoints: TestConfig[] = [
     endpoint: "/api/text/decompress",
     method: "POST",
     // Pre-compressed "Hello World!" using gzip (base64)
-    body: { compressed: "H4sIAAAAAAAAA8tIzcnJVyjPL8pJUQQAlRmFGwwAAAA=", algorithm: "gzip" },
+    body: { compressed: "H4sIAAAAAAAAA/NIzcnJVwjPL8pJUQQAoxwpHAwAAAA=", algorithm: "gzip" },
     validateResponse: (data, tokenType) => {
       const d = data as { text: string; tokenType: string };
       return d.text === "Hello World!" && d.tokenType === tokenType;
