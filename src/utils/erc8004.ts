@@ -14,6 +14,8 @@ import {
   listCV,
   noneCV,
   someCV,
+  trueCV,
+  falseCV,
 } from "@stacks/transactions";
 import { getFetchOptions, setFetchOptions } from "@stacks/common";
 import { sha256 } from "@noble/hashes/sha256";
@@ -221,6 +223,13 @@ export function some(cv: ClarityValue): ClarityValue {
  */
 export function list(items: ClarityValue[]): ClarityValue {
   return listCV(items);
+}
+
+/**
+ * Build bool Clarity value
+ */
+export function boolCV(b: boolean): ClarityValue {
+  return b ? trueCV() : falseCV();
 }
 
 /**

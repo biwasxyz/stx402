@@ -10,6 +10,7 @@ import {
   list,
   none,
   some,
+  boolCV,
   type ERC8004Network,
   ERC8004_CONTRACTS,
 } from "../../utils/erc8004";

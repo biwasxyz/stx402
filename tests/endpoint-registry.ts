@@ -1267,11 +1267,13 @@ const registryEndpoints: TestConfig[] = [
     endpoint: "/api/admin/registry/verify",
     method: "POST",
     body: { url: "https://example.com/api/nonexistent", action: "verify", adminAddress: FIXTURES.mainnetAddress },
-    // Admin endpoints return 403 for non-admin callers - this is expected behavior
+    // Admin endpoints are FREE (no payment middleware) but require admin auth
+    // Non-admin callers get 403 immediately
+    skipPayment: true,
     allowedStatuses: [403],
-    validateResponse: (data, tokenType) => {
-      // May fail if not admin
-      return hasTokenType(data, tokenType) || hasField(data, "error");
+    validateResponse: (data) => {
+      // Accepts 403 error response (not admin) - no tokenType on free endpoints
+      return hasField(data, "error") || hasField(data, "success");
     },
   },
   {
@@ -1279,11 +1281,13 @@ const registryEndpoints: TestConfig[] = [
     endpoint: "/api/admin/registry/pending",
     method: "POST",
     body: { adminAddress: FIXTURES.mainnetAddress },
-    // Admin endpoints return 403 for non-admin callers - this is expected behavior
+    // Admin endpoints are FREE (no payment middleware) but require admin auth
+    // Non-admin callers get 403 immediately
+    skipPayment: true,
     allowedStatuses: [403],
-    validateResponse: (data, tokenType) => {
-      // May fail if not admin
-      return hasTokenType(data, tokenType) || hasField(data, "error");
+    validateResponse: (data) => {
+      // Accepts 403 error response (not admin) - no tokenType on free endpoints
+      return hasField(data, "error") || hasField(data, "entries");
     },
   },
 ];
