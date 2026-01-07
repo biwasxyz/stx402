@@ -210,9 +210,8 @@ export class RegistryRegister extends BaseEndpoint {
     const urlHash = generateUrlHash(body.url);
 
     // Get registrant address from payment (the address that paid)
-    // For now, use the owner address as registrant too
-    // TODO: Extract actual payer from X-PAYMENT header
-    const registeredBy = ownerAddress;
+    // This may differ from owner if someone registers on behalf of another address
+    const registeredBy = this.getPayerAddress(c) || ownerAddress;
 
     // Create the registry entry
     const now = new Date().toISOString();
