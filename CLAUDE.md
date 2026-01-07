@@ -69,14 +69,14 @@ X402_NETWORK=testnet X402_WORKER_URL=https://stx402-staging.whoabuddy.workers.de
 
 ### Endpoint Categories
 
-Counts from `tests/endpoint-registry.ts:ENDPOINT_COUNTS` (166 tested + 5 free = 171 total routes):
+Counts from `tests/endpoint-registry.ts:ENDPOINT_COUNTS` (168 tested + 5 free = 173 total routes):
 
 | Category | Count | Path Pattern | Tier | Description |
 |----------|-------|--------------|------|-------------|
 | Health | 5 | `/api/health`, `/dashboard`, `/about`, `/guide`, `/toolbox` | free | Monitoring & docs |
 | Stacks | 15 | `/api/stacks/*` | simple | Blockchain queries, Clarity utilities |
 | AI | 13 | `/api/ai/*` | ai/heavy_ai | AI-powered analysis and generation |
-| Text | 24 | `/api/text/*` | simple | Encoding, hashing, compression |
+| Text | 26 | `/api/text/*` | simple | Encoding, hashing, compression |
 | Data | 8 | `/api/data/*` | simple | JSON/CSV processing |
 | Crypto | 2 | `/api/crypto/*` | simple | Cryptographic operations |
 | Random | 7 | `/api/random/*` | simple | Secure random generation |
