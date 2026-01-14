@@ -14,6 +14,7 @@ import { Health } from "./endpoints/health";
 import { Dashboard } from "./endpoints/dashboard";
 import { GuidePage } from "./endpoints/guide";
 import { ToolboxPage } from "./endpoints/toolbox";
+import { X402WellKnown } from "./endpoints/x402WellKnown";
 
 // Registry endpoints (X402 Directory)
 import { RegistryProbe } from "./endpoints/registryProbe";
@@ -157,6 +158,7 @@ openapi.get("/health", Health);
 openapi.get("/dashboard", Dashboard);
 openapi.get("/guide", GuidePage);
 openapi.get("/toolbox", ToolboxPage);
+openapi.get("/x402.json", X402WellKnown);
 
 // =============================================================================
 // Registry Endpoints (X402 Directory)
