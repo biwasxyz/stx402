@@ -91,7 +91,7 @@ export type ActivePage = "docs" | "dashboard" | "guide" | "toolbox" | "about";
 
 export function getNavHTML(activePage: ActivePage): string {
   const links = [
-    { href: "/", label: "API Docs", page: "docs" as const },
+    { href: "/docs", label: "Docs", page: "docs" as const },
     { href: "/dashboard", label: "Dashboard", page: "dashboard" as const },
     { href: "/guide", label: "Guide", page: "guide" as const },
     { href: "/toolbox", label: "Toolbox", page: "toolbox" as const },
