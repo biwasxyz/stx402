@@ -668,11 +668,16 @@ async function cleanup(ctx: TestContext): Promise<void> {
 }
 
 // =============================================================================
-// Main
+// Exported Test Runner
 // =============================================================================
 
-async function main() {
-  console.clear();
+export interface LifecycleTestResult {
+  passed: number;
+  total: number;
+  success: boolean;
+}
+
+export async function runRegistryLifecycle(verbose = false): Promise<LifecycleTestResult> {
   console.log(`\n${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
   console.log(`${COLORS.bright}  REGISTRY LIFECYCLE TEST${COLORS.reset}`);
   console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
@@ -771,13 +776,22 @@ async function main() {
     console.log(`  ${icon} ${r.name}`);
   }
 
-  console.log(`\n  ${passed}/${total} tests passed`);
+  const pct = ((passed / total) * 100).toFixed(1);
+  console.log(`\n  ${passed}/${total} tests passed (${pct}%)`);
   console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}\n`);
 
-  process.exit(passed === total ? 0 : 1);
+  return { passed, total, success: passed === total };
 }
 
-main().catch((error) => {
-  console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
-  process.exit(1);
-});
+// =============================================================================
+// Main (when run directly)
+// =============================================================================
+
+if (import.meta.main) {
+  runRegistryLifecycle()
+    .then((result) => process.exit(result.success ? 0 : 1))
+    .catch((error) => {
+      console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
+      process.exit(1);
+    });
+}

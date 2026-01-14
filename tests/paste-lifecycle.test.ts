@@ -1,18 +1,15 @@
 /**
- * Links (URL Shortener) Lifecycle Tests
+ * Paste Lifecycle Tests
  *
- * Tests the full lifecycle of Links endpoints:
- *
- * 1. Create - create a short link
- * 2. List - list all links (should have 1)
- * 3. Expand - access the short link (free, records click)
- * 4. Stats - get click statistics
- * 5. Create with custom slug - test custom slug
- * 6. Delete - remove the link
- * 7. List - verify deletion
+ * Tests the full lifecycle of Paste endpoints:
+ * 1. Create - create a paste with auto-generated code
+ * 2. Get - retrieve the paste by code
+ * 3. Create with language - create paste with syntax highlighting
+ * 4. Delete - remove the paste
+ * 5. Get (verify deletion) - confirm paste is gone
  *
  * Usage:
- *   bun run tests/links-lifecycle.test.ts
+ *   bun run tests/paste-lifecycle.test.ts
  *
  * Environment:
  *   X402_CLIENT_PK  - Mnemonic for payments (required)
@@ -20,7 +17,7 @@
  *   VERBOSE=1       - Enable verbose logging
  */
 
-import type { TokenType } from "x402-stacks";
+import type { TokenType, NetworkType } from "x402-stacks";
 import { X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import {
@@ -36,9 +33,6 @@ import {
 
 const VERBOSE = process.env.VERBOSE === "1";
 const TOKEN_TYPE: TokenType = "STX";
-
-// Test slugs - unique per run
-const TEST_SLUG_CUSTOM = `test-slug-${Date.now()}`;
 
 // =============================================================================
 // Test Helpers
@@ -137,33 +131,6 @@ async function makeX402Request(
   return { status: paidRes.status, data, headers: paidRes.headers };
 }
 
-// Free request (no payment needed - for expand endpoint)
-async function makeFreeRequest(
-  endpoint: string,
-  method: "GET" | "POST",
-  body?: unknown
-): Promise<{ status: number; data: unknown; headers: Headers }> {
-  const fullUrl = `${X402_WORKER_URL}${endpoint}`;
-
-  log(`Requesting ${method} ${endpoint} (free)...`);
-
-  const res = await fetch(fullUrl, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-    redirect: "manual", // Don't follow redirects automatically
-  });
-
-  let data: unknown;
-  const text = await res.text();
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
-  }
-  return { status: res.status, data, headers: res.headers };
-}
-
 // =============================================================================
 // Test Context
 // =============================================================================
@@ -172,22 +139,23 @@ interface TestContext {
   x402Client: X402PaymentClient;
   ownerAddress: string;
   network: "mainnet" | "testnet";
-  createdSlug: string; // Track the auto-generated slug
+  createdCode: string; // Track the auto-generated code
+  secondCode: string;  // Track the second paste code
 }
 
 // =============================================================================
-// Link Tests
+// Paste Tests
 // =============================================================================
 
-async function testLinksCreate(ctx: TestContext): Promise<boolean> {
-  logStep(1, 7, "Links: Create");
+async function testPasteCreate(ctx: TestContext): Promise<boolean> {
+  logStep(1, 5, "Paste: Create");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/create",
+      "/api/paste/create",
       "POST",
       ctx.x402Client,
-      { url: "https://example.com/test-page", title: "Test Link" }
+      { content: "Hello, World! This is a test paste.", ttl: 300 }
     );
 
     if (status !== 200) {
@@ -195,24 +163,20 @@ async function testLinksCreate(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; shortUrl: string; url: string; title: string };
-    if (!result.slug) {
-      logError(`No slug returned`);
+    const result = data as { code: string; url: string; expiresAt: string; bytes: number };
+    if (!result.code) {
+      logError(`No code returned`);
       return false;
     }
-    if (!result.shortUrl.includes(result.slug)) {
-      logError(`Short URL doesn't contain slug`);
-      return false;
-    }
-    if (result.url !== "https://example.com/test-page") {
-      logError(`URL mismatch: ${result.url}`);
+    if (!result.url.includes(result.code)) {
+      logError(`URL doesn't contain code`);
       return false;
     }
 
-    // Store the slug for later tests
-    ctx.createdSlug = result.slug;
+    // Store the code for later tests
+    ctx.createdCode = result.code;
 
-    logSuccess(`Created link: ${result.shortUrl} → ${result.url}`);
+    logSuccess(`Created paste: ${result.code} (${result.bytes} bytes, expires: ${result.expiresAt})`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -220,12 +184,12 @@ async function testLinksCreate(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksList(ctx: TestContext): Promise<boolean> {
-  logStep(2, 7, "Links: List");
+async function testPasteGet(ctx: TestContext): Promise<boolean> {
+  logStep(2, 5, "Paste: Get");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/list",
+      `/api/paste/${ctx.createdCode}`,
       "GET",
       ctx.x402Client
     );
@@ -235,19 +199,17 @@ async function testLinksList(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { links: Array<{ slug: string; url: string; clicks: number }>; count: number };
-    if (result.count < 1) {
-      logError(`Expected at least 1 link, got ${result.count}`);
+    const result = data as { code: string; content: string; language?: string; createdAt: string };
+    if (result.code !== ctx.createdCode) {
+      logError(`Code mismatch: ${result.code}`);
+      return false;
+    }
+    if (!result.content.includes("Hello, World!")) {
+      logError(`Content mismatch: ${result.content}`);
       return false;
     }
 
-    const createdLink = result.links.find(l => l.slug === ctx.createdSlug);
-    if (!createdLink) {
-      logError(`Created link not found in list`);
-      return false;
-    }
-
-    logSuccess(`Listed ${result.count} links (found our test link: ${ctx.createdSlug})`);
+    logSuccess(`Retrieved paste: ${result.code} - "${result.content.substring(0, 30)}..."`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -255,52 +217,19 @@ async function testLinksList(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksExpand(ctx: TestContext): Promise<boolean> {
-  logStep(3, 7, "Links: Expand (free, records click)");
-
-  try {
-    // Expand is free - no payment required
-    const { status, data, headers } = await makeFreeRequest(
-      `/api/links/expand/${ctx.createdSlug}`,
-      "GET"
-    );
-
-    // Should get a redirect (302) or JSON with url
-    if (status === 302) {
-      const location = headers.get("Location");
-      if (!location || !location.includes("example.com")) {
-        logError(`Expected redirect to example.com, got: ${location}`);
-        return false;
-      }
-      logSuccess(`Got redirect to: ${location}`);
-      return true;
-    } else if (status === 200) {
-      const result = data as { url: string; slug: string };
-      if (!result.url.includes("example.com")) {
-        logError(`Expected URL with example.com, got: ${result.url}`);
-        return false;
-      }
-      logSuccess(`Expanded: ${ctx.createdSlug} → ${result.url}`);
-      return true;
-    } else {
-      logError(`Expected 200 or 302, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksStats(ctx: TestContext): Promise<boolean> {
-  logStep(4, 7, "Links: Stats");
+async function testPasteCreateWithLanguage(ctx: TestContext): Promise<boolean> {
+  logStep(3, 5, "Paste: Create with language");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/stats",
+      "/api/paste/create",
       "POST",
       ctx.x402Client,
-      { slug: ctx.createdSlug }
+      {
+        content: "function hello() {\n  console.log('Hello, World!');\n}",
+        language: "javascript",
+        ttl: 300,
+      }
     );
 
     if (status !== 200) {
@@ -308,17 +237,15 @@ async function testLinksStats(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; clicks: number; url: string; createdAt: string };
-    if (result.slug !== ctx.createdSlug) {
-      logError(`Slug mismatch: ${result.slug}`);
-      return false;
-    }
-    if (result.clicks < 1) {
-      logError(`Expected at least 1 click, got ${result.clicks}`);
+    const result = data as { code: string; url: string; language?: string };
+    if (!result.code) {
+      logError(`No code returned`);
       return false;
     }
 
-    logSuccess(`Stats for ${result.slug}: ${result.clicks} clicks`);
+    ctx.secondCode = result.code;
+
+    logSuccess(`Created paste with language: ${result.code} (language: ${result.language || "none"})`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -326,46 +253,16 @@ async function testLinksStats(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksCreateCustomSlug(ctx: TestContext): Promise<boolean> {
-  logStep(5, 7, "Links: Create with custom slug");
+async function testPasteDelete(ctx: TestContext): Promise<boolean> {
+  logStep(4, 5, "Paste: Delete");
 
   try {
-    const { status, data } = await makeX402Request(
-      "/api/links/create",
-      "POST",
-      ctx.x402Client,
-      { url: "https://github.com/stx402", slug: TEST_SLUG_CUSTOM, title: "Custom Slug Test" }
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { slug: string; shortUrl: string; url: string };
-    if (result.slug !== TEST_SLUG_CUSTOM) {
-      logError(`Custom slug not used: ${result.slug}`);
-      return false;
-    }
-
-    logSuccess(`Created with custom slug: ${result.slug} → ${result.url}`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksDelete(ctx: TestContext): Promise<boolean> {
-  logStep(6, 7, "Links: Delete");
-
-  try {
-    // Delete both links we created
+    // Delete first paste
     const { status: status1, data: data1 } = await makeX402Request(
-      "/api/links/delete",
+      "/api/paste/delete",
       "POST",
       ctx.x402Client,
-      { slug: ctx.createdSlug }
+      { code: ctx.createdCode }
     );
 
     if (status1 !== 200) {
@@ -373,11 +270,12 @@ async function testLinksDelete(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
+    // Delete second paste
     const { status: status2, data: data2 } = await makeX402Request(
-      "/api/links/delete",
+      "/api/paste/delete",
       "POST",
       ctx.x402Client,
-      { slug: TEST_SLUG_CUSTOM }
+      { code: ctx.secondCode }
     );
 
     if (status2 !== 200) {
@@ -385,7 +283,7 @@ async function testLinksDelete(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    logSuccess(`Deleted both test links: ${ctx.createdSlug}, ${TEST_SLUG_CUSTOM}`);
+    logSuccess(`Deleted both pastes: ${ctx.createdCode}, ${ctx.secondCode}`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -393,34 +291,23 @@ async function testLinksDelete(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksListAfterDelete(ctx: TestContext): Promise<boolean> {
-  logStep(7, 7, "Links: List (verify deletion)");
+async function testPasteGetAfterDelete(ctx: TestContext): Promise<boolean> {
+  logStep(5, 5, "Paste: Get (verify deletion)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/list",
+      `/api/paste/${ctx.createdCode}`,
       "GET",
       ctx.x402Client
     );
 
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
+    if (status === 404) {
+      logSuccess(`Verified deletion: paste ${ctx.createdCode} no longer exists`);
+      return true;
     }
 
-    const result = data as { links: Array<{ slug: string }>; count: number };
-
-    // Check that our test links are gone
-    const foundFirst = result.links.find(l => l.slug === ctx.createdSlug);
-    const foundSecond = result.links.find(l => l.slug === TEST_SLUG_CUSTOM);
-
-    if (foundFirst || foundSecond) {
-      logError(`Deleted links still present in list`);
-      return false;
-    }
-
-    logSuccess(`Verified deletion: test links no longer in list (${result.count} remaining)`);
-    return true;
+    logError(`Expected 404, got ${status}: ${JSON.stringify(data)}`);
+    return false;
   } catch (error) {
     logError(`Exception: ${error}`);
     return false;
@@ -437,46 +324,50 @@ export interface LifecycleTestResult {
   success: boolean;
 }
 
-export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestResult> {
-  console.log(`${COLORS.bright}╔════════════════════════════════════════╗${COLORS.reset}`);
-  console.log(`${COLORS.bright}║     Links Lifecycle Tests              ║${COLORS.reset}`);
-  console.log(`${COLORS.bright}╚════════════════════════════════════════╝${COLORS.reset}`);
-  console.log(`\n${COLORS.gray}Server: ${X402_WORKER_URL}${COLORS.reset}`);
-  console.log(`${COLORS.gray}Network: ${X402_NETWORK}${COLORS.reset}`);
-  console.log(`${COLORS.gray}Token: ${TOKEN_TYPE}${COLORS.reset}`);
+export async function runPasteLifecycle(verbose = false): Promise<LifecycleTestResult> {
+  // Override verbose if env is set
+  const isVerbose = verbose || process.env.VERBOSE === "1";
 
-  // Initialize X402 client
+  console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+  console.log(`${COLORS.bright}  PASTE LIFECYCLE TEST${COLORS.reset}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+
   if (!X402_CLIENT_PK) {
-    console.error(`${COLORS.red}Error: X402_CLIENT_PK environment variable is required${COLORS.reset}`);
-    process.exit(1);
+    console.error(`${COLORS.red}Error: Set X402_CLIENT_PK env var${COLORS.reset}`);
+    return { passed: 0, total: 5, success: false };
   }
 
   if (X402_NETWORK !== "mainnet" && X402_NETWORK !== "testnet") {
     console.error(`${COLORS.red}Error: Invalid X402_NETWORK${COLORS.reset}`);
-    process.exit(1);
+    return { passed: 0, total: 5, success: false };
   }
 
-  const { address, key } = await deriveChildAccount(X402_NETWORK, X402_CLIENT_PK, 0);
+  const network: NetworkType = X402_NETWORK;
+  const { address, key } = await deriveChildAccount(network, X402_CLIENT_PK, 0);
 
   const x402Client = new X402PaymentClient({
-    network: X402_NETWORK,
+    network,
     privateKey: key,
   });
 
-  console.log(`${COLORS.gray}Client: ${address}${COLORS.reset}`);
+  console.log(`  Account: ${address}`);
+  console.log(`  Network: ${network}`);
+  console.log(`  Server:  ${X402_WORKER_URL}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
 
   const ctx: TestContext = {
     x402Client,
     ownerAddress: address,
-    network: X402_NETWORK,
-    createdSlug: "",
+    network,
+    createdCode: "",
+    secondCode: "",
   };
 
   // Run initial test - if it fails, bail out (no state to test)
-  const totalTests = 7;
+  const totalTests = 5;
   let passed = 0;
 
-  const createResult = await testLinksCreate(ctx);
+  const createResult = await testPasteCreate(ctx);
   if (!createResult) {
     console.log(`\n${COLORS.yellow}Bailing out: initial create failed, skipping remaining tests${COLORS.reset}`);
     console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
@@ -489,12 +380,10 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
 
   // Run remaining tests
   const remainingTests = [
-    testLinksList,
-    testLinksExpand,
-    testLinksStats,
-    testLinksCreateCustomSlug,
-    testLinksDelete,
-    testLinksListAfterDelete,
+    testPasteGet,
+    testPasteCreateWithLanguage,
+    testPasteDelete,
+    testPasteGetAfterDelete,
   ];
 
   for (const test of remainingTests) {
@@ -518,7 +407,7 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
 // =============================================================================
 
 if (import.meta.main) {
-  runLinksLifecycle()
+  runPasteLifecycle()
     .then((result) => process.exit(result.success ? 0 : 1))
     .catch((error) => {
       console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);

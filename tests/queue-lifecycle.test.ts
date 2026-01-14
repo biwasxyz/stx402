@@ -1,18 +1,17 @@
 /**
- * Links (URL Shortener) Lifecycle Tests
+ * Queue (Job Queue) Lifecycle Tests
  *
- * Tests the full lifecycle of Links endpoints:
- *
- * 1. Create - create a short link
- * 2. List - list all links (should have 1)
- * 3. Expand - access the short link (free, records click)
- * 4. Stats - get click statistics
- * 5. Create with custom slug - test custom slug
- * 6. Delete - remove the link
- * 7. List - verify deletion
+ * Tests the full lifecycle of Queue endpoints:
+ * 1. Push - add a job to the queue
+ * 2. Status - check queue status
+ * 3. Pop - retrieve the job
+ * 4. Complete - mark job as completed
+ * 5. Push another - add second job
+ * 6. Pop and Fail - retrieve and fail job
+ * 7. Status (verify empty) - confirm queue is processed
  *
  * Usage:
- *   bun run tests/links-lifecycle.test.ts
+ *   bun run tests/queue-lifecycle.test.ts
  *
  * Environment:
  *   X402_CLIENT_PK  - Mnemonic for payments (required)
@@ -20,7 +19,7 @@
  *   VERBOSE=1       - Enable verbose logging
  */
 
-import type { TokenType } from "x402-stacks";
+import type { TokenType, NetworkType } from "x402-stacks";
 import { X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import {
@@ -36,9 +35,7 @@ import {
 
 const VERBOSE = process.env.VERBOSE === "1";
 const TOKEN_TYPE: TokenType = "STX";
-
-// Test slugs - unique per run
-const TEST_SLUG_CUSTOM = `test-slug-${Date.now()}`;
+const TEST_QUEUE_NAME = `test-queue-${Date.now()}`;
 
 // =============================================================================
 // Test Helpers
@@ -95,7 +92,6 @@ async function makeX402Request(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // If not 402, return as-is
   if (initialRes.status !== 402) {
     let data: unknown;
     const text = await initialRes.text();
@@ -107,16 +103,13 @@ async function makeX402Request(
     return { status: initialRes.status, data, headers: initialRes.headers };
   }
 
-  // Get payment requirements
   const paymentText = await initialRes.text();
   const paymentReq: PaymentRequired = JSON.parse(paymentText);
   log(`Payment required: ${paymentReq.maxAmountRequired} ${paymentReq.tokenType}`);
 
-  // Sign payment
   const signResult = await x402Client.signPayment(paymentReq);
   log("Payment signed");
 
-  // Retry with payment
   const paidRes = await fetch(`${fullUrl}${tokenParam}`, {
     method,
     headers: {
@@ -137,33 +130,6 @@ async function makeX402Request(
   return { status: paidRes.status, data, headers: paidRes.headers };
 }
 
-// Free request (no payment needed - for expand endpoint)
-async function makeFreeRequest(
-  endpoint: string,
-  method: "GET" | "POST",
-  body?: unknown
-): Promise<{ status: number; data: unknown; headers: Headers }> {
-  const fullUrl = `${X402_WORKER_URL}${endpoint}`;
-
-  log(`Requesting ${method} ${endpoint} (free)...`);
-
-  const res = await fetch(fullUrl, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-    redirect: "manual", // Don't follow redirects automatically
-  });
-
-  let data: unknown;
-  const text = await res.text();
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
-  }
-  return { status: res.status, data, headers: res.headers };
-}
-
 // =============================================================================
 // Test Context
 // =============================================================================
@@ -172,135 +138,158 @@ interface TestContext {
   x402Client: X402PaymentClient;
   ownerAddress: string;
   network: "mainnet" | "testnet";
-  createdSlug: string; // Track the auto-generated slug
+  jobId1: string;
+  jobId2: string;
 }
 
 // =============================================================================
-// Link Tests
+// Queue Tests
 // =============================================================================
 
-async function testLinksCreate(ctx: TestContext): Promise<boolean> {
-  logStep(1, 7, "Links: Create");
+async function testQueuePush(ctx: TestContext): Promise<boolean> {
+  logStep(1, 7, "Queue: Push (add job)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/create",
+      "/api/queue/push",
       "POST",
       ctx.x402Client,
-      { url: "https://example.com/test-page", title: "Test Link" }
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { slug: string; shortUrl: string; url: string; title: string };
-    if (!result.slug) {
-      logError(`No slug returned`);
-      return false;
-    }
-    if (!result.shortUrl.includes(result.slug)) {
-      logError(`Short URL doesn't contain slug`);
-      return false;
-    }
-    if (result.url !== "https://example.com/test-page") {
-      logError(`URL mismatch: ${result.url}`);
-      return false;
-    }
-
-    // Store the slug for later tests
-    ctx.createdSlug = result.slug;
-
-    logSuccess(`Created link: ${result.shortUrl} → ${result.url}`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksList(ctx: TestContext): Promise<boolean> {
-  logStep(2, 7, "Links: List");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/links/list",
-      "GET",
-      ctx.x402Client
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { links: Array<{ slug: string; url: string; clicks: number }>; count: number };
-    if (result.count < 1) {
-      logError(`Expected at least 1 link, got ${result.count}`);
-      return false;
-    }
-
-    const createdLink = result.links.find(l => l.slug === ctx.createdSlug);
-    if (!createdLink) {
-      logError(`Created link not found in list`);
-      return false;
-    }
-
-    logSuccess(`Listed ${result.count} links (found our test link: ${ctx.createdSlug})`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksExpand(ctx: TestContext): Promise<boolean> {
-  logStep(3, 7, "Links: Expand (free, records click)");
-
-  try {
-    // Expand is free - no payment required
-    const { status, data, headers } = await makeFreeRequest(
-      `/api/links/expand/${ctx.createdSlug}`,
-      "GET"
-    );
-
-    // Should get a redirect (302) or JSON with url
-    if (status === 302) {
-      const location = headers.get("Location");
-      if (!location || !location.includes("example.com")) {
-        logError(`Expected redirect to example.com, got: ${location}`);
-        return false;
+      {
+        queue: TEST_QUEUE_NAME,
+        payload: { task: "process-data", data: { id: 1, name: "test" } },
+        priority: 0,
       }
-      logSuccess(`Got redirect to: ${location}`);
-      return true;
-    } else if (status === 200) {
-      const result = data as { url: string; slug: string };
-      if (!result.url.includes("example.com")) {
-        logError(`Expected URL with example.com, got: ${result.url}`);
-        return false;
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { jobId: string; queue: string; position: number };
+    if (!result.jobId) {
+      logError(`No jobId returned`);
+      return false;
+    }
+
+    ctx.jobId1 = result.jobId;
+
+    logSuccess(`Pushed job: ${result.jobId} to ${result.queue} (position: ${result.position})`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testQueueStatus(ctx: TestContext): Promise<boolean> {
+  logStep(2, 7, "Queue: Status");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/queue/status",
+      "POST",
+      ctx.x402Client,
+      { queue: TEST_QUEUE_NAME }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { queue: string; pending: number; processing: number; completed: number; failed: number };
+    if (result.pending < 1) {
+      logError(`Expected at least 1 pending job, got ${result.pending}`);
+      return false;
+    }
+
+    logSuccess(`Queue status: ${result.pending} pending, ${result.processing} processing, ${result.completed} completed`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testQueuePop(ctx: TestContext): Promise<boolean> {
+  logStep(3, 7, "Queue: Pop (retrieve job)");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/queue/pop",
+      "POST",
+      ctx.x402Client,
+      { queue: TEST_QUEUE_NAME, visibility: 60 }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { jobId?: string; payload?: unknown; attempt?: number; empty?: boolean };
+    if (result.empty) {
+      logError(`Queue was empty, expected a job`);
+      return false;
+    }
+    if (!result.jobId) {
+      logError(`No jobId in popped result`);
+      return false;
+    }
+
+    logSuccess(`Popped job: ${result.jobId} (attempt: ${result.attempt})`);
+    log("Payload:", result.payload);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testQueueComplete(ctx: TestContext): Promise<boolean> {
+  logStep(4, 7, "Queue: Complete");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/queue/complete",
+      "POST",
+      ctx.x402Client,
+      { jobId: ctx.jobId1 }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { completed: boolean; jobId: string };
+    if (!result.completed) {
+      logError(`Job not marked as completed`);
+      return false;
+    }
+
+    logSuccess(`Completed job: ${result.jobId}`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testQueuePushSecond(ctx: TestContext): Promise<boolean> {
+  logStep(5, 7, "Queue: Push (second job)");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/queue/push",
+      "POST",
+      ctx.x402Client,
+      {
+        queue: TEST_QUEUE_NAME,
+        payload: { task: "send-email", to: "test@example.com" },
+        priority: 1,
       }
-      logSuccess(`Expanded: ${ctx.createdSlug} → ${result.url}`);
-      return true;
-    } else {
-      logError(`Expected 200 or 302, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksStats(ctx: TestContext): Promise<boolean> {
-  logStep(4, 7, "Links: Stats");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/links/stats",
-      "POST",
-      ctx.x402Client,
-      { slug: ctx.createdSlug }
     );
 
     if (status !== 200) {
@@ -308,17 +297,10 @@ async function testLinksStats(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; clicks: number; url: string; createdAt: string };
-    if (result.slug !== ctx.createdSlug) {
-      logError(`Slug mismatch: ${result.slug}`);
-      return false;
-    }
-    if (result.clicks < 1) {
-      logError(`Expected at least 1 click, got ${result.clicks}`);
-      return false;
-    }
+    const result = data as { jobId: string; queue: string };
+    ctx.jobId2 = result.jobId;
 
-    logSuccess(`Stats for ${result.slug}: ${result.clicks} clicks`);
+    logSuccess(`Pushed second job: ${result.jobId}`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -326,15 +308,61 @@ async function testLinksStats(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksCreateCustomSlug(ctx: TestContext): Promise<boolean> {
-  logStep(5, 7, "Links: Create with custom slug");
+async function testQueuePopAndFail(ctx: TestContext): Promise<boolean> {
+  logStep(6, 7, "Queue: Pop and Fail");
+
+  try {
+    // Pop the job
+    const { status: popStatus, data: popData } = await makeX402Request(
+      "/api/queue/pop",
+      "POST",
+      ctx.x402Client,
+      { queue: TEST_QUEUE_NAME, visibility: 60 }
+    );
+
+    if (popStatus !== 200) {
+      logError(`Pop failed: ${popStatus}`);
+      return false;
+    }
+
+    const popResult = popData as { jobId?: string; empty?: boolean };
+    if (popResult.empty || !popResult.jobId) {
+      logError(`No job to pop`);
+      return false;
+    }
+
+    // Fail the job
+    const { status: failStatus, data: failData } = await makeX402Request(
+      "/api/queue/fail",
+      "POST",
+      ctx.x402Client,
+      { jobId: popResult.jobId, error: "Test failure - simulated error" }
+    );
+
+    if (failStatus !== 200) {
+      logError(`Fail request failed: ${failStatus}`);
+      return false;
+    }
+
+    const failResult = failData as { failed: boolean; willRetry: boolean; jobId: string };
+
+    logSuccess(`Failed job: ${failResult.jobId} (willRetry: ${failResult.willRetry})`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testQueueStatusFinal(ctx: TestContext): Promise<boolean> {
+  logStep(7, 7, "Queue: Status (final)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/create",
+      "/api/queue/status",
       "POST",
       ctx.x402Client,
-      { url: "https://github.com/stx402", slug: TEST_SLUG_CUSTOM, title: "Custom Slug Test" }
+      { queue: TEST_QUEUE_NAME }
     );
 
     if (status !== 200) {
@@ -342,84 +370,9 @@ async function testLinksCreateCustomSlug(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; shortUrl: string; url: string };
-    if (result.slug !== TEST_SLUG_CUSTOM) {
-      logError(`Custom slug not used: ${result.slug}`);
-      return false;
-    }
+    const result = data as { queue: string; pending: number; processing: number; completed: number; failed: number };
 
-    logSuccess(`Created with custom slug: ${result.slug} → ${result.url}`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksDelete(ctx: TestContext): Promise<boolean> {
-  logStep(6, 7, "Links: Delete");
-
-  try {
-    // Delete both links we created
-    const { status: status1, data: data1 } = await makeX402Request(
-      "/api/links/delete",
-      "POST",
-      ctx.x402Client,
-      { slug: ctx.createdSlug }
-    );
-
-    if (status1 !== 200) {
-      logError(`Expected 200 for first delete, got ${status1}: ${JSON.stringify(data1)}`);
-      return false;
-    }
-
-    const { status: status2, data: data2 } = await makeX402Request(
-      "/api/links/delete",
-      "POST",
-      ctx.x402Client,
-      { slug: TEST_SLUG_CUSTOM }
-    );
-
-    if (status2 !== 200) {
-      logError(`Expected 200 for second delete, got ${status2}: ${JSON.stringify(data2)}`);
-      return false;
-    }
-
-    logSuccess(`Deleted both test links: ${ctx.createdSlug}, ${TEST_SLUG_CUSTOM}`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksListAfterDelete(ctx: TestContext): Promise<boolean> {
-  logStep(7, 7, "Links: List (verify deletion)");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/links/list",
-      "GET",
-      ctx.x402Client
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { links: Array<{ slug: string }>; count: number };
-
-    // Check that our test links are gone
-    const foundFirst = result.links.find(l => l.slug === ctx.createdSlug);
-    const foundSecond = result.links.find(l => l.slug === TEST_SLUG_CUSTOM);
-
-    if (foundFirst || foundSecond) {
-      logError(`Deleted links still present in list`);
-      return false;
-    }
-
-    logSuccess(`Verified deletion: test links no longer in list (${result.count} remaining)`);
+    logSuccess(`Final status: ${result.pending} pending, ${result.processing} processing, ${result.completed} completed, ${result.failed} failed`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -437,48 +390,52 @@ export interface LifecycleTestResult {
   success: boolean;
 }
 
-export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestResult> {
-  console.log(`${COLORS.bright}╔════════════════════════════════════════╗${COLORS.reset}`);
-  console.log(`${COLORS.bright}║     Links Lifecycle Tests              ║${COLORS.reset}`);
-  console.log(`${COLORS.bright}╚════════════════════════════════════════╝${COLORS.reset}`);
-  console.log(`\n${COLORS.gray}Server: ${X402_WORKER_URL}${COLORS.reset}`);
-  console.log(`${COLORS.gray}Network: ${X402_NETWORK}${COLORS.reset}`);
-  console.log(`${COLORS.gray}Token: ${TOKEN_TYPE}${COLORS.reset}`);
+export async function runQueueLifecycle(verbose = false): Promise<LifecycleTestResult> {
+  const isVerbose = verbose || process.env.VERBOSE === "1";
 
-  // Initialize X402 client
+  console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+  console.log(`${COLORS.bright}  QUEUE (JOB QUEUE) LIFECYCLE TEST${COLORS.reset}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+
   if (!X402_CLIENT_PK) {
-    console.error(`${COLORS.red}Error: X402_CLIENT_PK environment variable is required${COLORS.reset}`);
-    process.exit(1);
+    console.error(`${COLORS.red}Error: Set X402_CLIENT_PK env var${COLORS.reset}`);
+    return { passed: 0, total: 7, success: false };
   }
 
   if (X402_NETWORK !== "mainnet" && X402_NETWORK !== "testnet") {
     console.error(`${COLORS.red}Error: Invalid X402_NETWORK${COLORS.reset}`);
-    process.exit(1);
+    return { passed: 0, total: 7, success: false };
   }
 
-  const { address, key } = await deriveChildAccount(X402_NETWORK, X402_CLIENT_PK, 0);
+  const network: NetworkType = X402_NETWORK;
+  const { address, key } = await deriveChildAccount(network, X402_CLIENT_PK, 0);
 
   const x402Client = new X402PaymentClient({
-    network: X402_NETWORK,
+    network,
     privateKey: key,
   });
 
-  console.log(`${COLORS.gray}Client: ${address}${COLORS.reset}`);
+  console.log(`  Account: ${address}`);
+  console.log(`  Network: ${network}`);
+  console.log(`  Server:  ${X402_WORKER_URL}`);
+  console.log(`  Queue:   ${TEST_QUEUE_NAME}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
 
   const ctx: TestContext = {
     x402Client,
     ownerAddress: address,
-    network: X402_NETWORK,
-    createdSlug: "",
+    network,
+    jobId1: "",
+    jobId2: "",
   };
 
   // Run initial test - if it fails, bail out (no state to test)
   const totalTests = 7;
   let passed = 0;
 
-  const createResult = await testLinksCreate(ctx);
-  if (!createResult) {
-    console.log(`\n${COLORS.yellow}Bailing out: initial create failed, skipping remaining tests${COLORS.reset}`);
+  const pushResult = await testQueuePush(ctx);
+  if (!pushResult) {
+    console.log(`\n${COLORS.yellow}Bailing out: initial push failed, skipping remaining tests${COLORS.reset}`);
     console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
     console.log(`  0/${totalTests} tests passed (setup failed)`);
     console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}\n`);
@@ -489,12 +446,12 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
 
   // Run remaining tests
   const remainingTests = [
-    testLinksList,
-    testLinksExpand,
-    testLinksStats,
-    testLinksCreateCustomSlug,
-    testLinksDelete,
-    testLinksListAfterDelete,
+    testQueueStatus,
+    testQueuePop,
+    testQueueComplete,
+    testQueuePushSecond,
+    testQueuePopAndFail,
+    testQueueStatusFinal,
   ];
 
   for (const test of remainingTests) {
@@ -504,7 +461,6 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
     await sleep(300);
   }
 
-  // Summary
   console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
   const pct = ((passed / totalTests) * 100).toFixed(1);
   console.log(`  ${passed}/${totalTests} tests passed (${pct}%)`);
@@ -518,7 +474,7 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
 // =============================================================================
 
 if (import.meta.main) {
-  runLinksLifecycle()
+  runQueueLifecycle()
     .then((result) => process.exit(result.success ? 0 : 1))
     .catch((error) => {
       console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);

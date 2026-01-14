@@ -1,9 +1,7 @@
 /**
- * Durable Objects Lifecycle Tests (Counter + SQL)
+ * Counter Lifecycle Tests
  *
- * Tests the full lifecycle of Counter and SQL endpoints:
- *
- * Counter Tests:
+ * Tests the full lifecycle of Counter endpoints:
  * 1. Increment - create a new counter
  * 2. Get - retrieve counter value
  * 3. Increment with bounds - test min/max capping
@@ -12,15 +10,8 @@
  * 6. List - list all counters
  * 7. Delete - remove counter
  *
- * SQL Tests:
- * 8. Schema - get initial schema
- * 9. Execute - create custom table
- * 10. Execute - insert data
- * 11. Query - select data
- * 12. Schema - verify new table exists
- *
  * Usage:
- *   bun run tests/durable-objects-lifecycle.test.ts
+ *   bun run tests/counter-lifecycle.test.ts
  *
  * Environment:
  *   X402_CLIENT_PK  - Mnemonic for payments (required)
@@ -44,10 +35,7 @@ import {
 
 const VERBOSE = process.env.VERBOSE === "1";
 const TOKEN_TYPE: TokenType = "STX";
-
-// Unique counter name for this test run
 const TEST_COUNTER_NAME = `test-counter-${Date.now()}`;
-const TEST_TABLE_NAME = `test_table_${Date.now()}`;
 
 // =============================================================================
 // Test Helpers
@@ -104,7 +92,6 @@ async function makeX402Request(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // If not 402, return as-is
   if (initialRes.status !== 402) {
     let data: unknown;
     const text = await initialRes.text();
@@ -116,16 +103,13 @@ async function makeX402Request(
     return { status: initialRes.status, data, headers: initialRes.headers };
   }
 
-  // Get payment requirements
   const paymentText = await initialRes.text();
   const paymentReq: PaymentRequired = JSON.parse(paymentText);
   log(`Payment required: ${paymentReq.maxAmountRequired} ${paymentReq.tokenType}`);
 
-  // Sign payment
   const signResult = await x402Client.signPayment(paymentReq);
   log("Payment signed");
 
-  // Retry with payment
   const paidRes = await fetch(`${fullUrl}${tokenParam}`, {
     method,
     headers: {
@@ -161,7 +145,7 @@ interface TestContext {
 // =============================================================================
 
 async function testCounterIncrement(ctx: TestContext): Promise<boolean> {
-  logStep(1, 12, "Counter: Increment (create new)");
+  logStep(1, 7, "Counter: Increment (create new)");
 
   try {
     const { status, data } = await makeX402Request(
@@ -199,7 +183,7 @@ async function testCounterIncrement(ctx: TestContext): Promise<boolean> {
 }
 
 async function testCounterGet(ctx: TestContext): Promise<boolean> {
-  logStep(2, 12, "Counter: Get");
+  logStep(2, 7, "Counter: Get");
 
   try {
     const { status, data } = await makeX402Request(
@@ -228,10 +212,9 @@ async function testCounterGet(ctx: TestContext): Promise<boolean> {
 }
 
 async function testCounterIncrementWithBounds(ctx: TestContext): Promise<boolean> {
-  logStep(3, 12, "Counter: Increment with max bound");
+  logStep(3, 7, "Counter: Increment with max bound");
 
   try {
-    // Set max to 8, increment by 10 - should cap at 8
     const { status, data } = await makeX402Request(
       "/api/counter/increment",
       "POST",
@@ -263,7 +246,7 @@ async function testCounterIncrementWithBounds(ctx: TestContext): Promise<boolean
 }
 
 async function testCounterDecrement(ctx: TestContext): Promise<boolean> {
-  logStep(4, 12, "Counter: Decrement");
+  logStep(4, 7, "Counter: Decrement");
 
   try {
     const { status, data } = await makeX402Request(
@@ -297,7 +280,7 @@ async function testCounterDecrement(ctx: TestContext): Promise<boolean> {
 }
 
 async function testCounterReset(ctx: TestContext): Promise<boolean> {
-  logStep(5, 12, "Counter: Reset");
+  logStep(5, 7, "Counter: Reset");
 
   try {
     const { status, data } = await makeX402Request(
@@ -327,7 +310,7 @@ async function testCounterReset(ctx: TestContext): Promise<boolean> {
 }
 
 async function testCounterList(ctx: TestContext): Promise<boolean> {
-  logStep(6, 12, "Counter: List all");
+  logStep(6, 7, "Counter: List all");
 
   try {
     const { status, data } = await makeX402Request(
@@ -358,7 +341,7 @@ async function testCounterList(ctx: TestContext): Promise<boolean> {
 }
 
 async function testCounterDelete(ctx: TestContext): Promise<boolean> {
-  logStep(7, 12, "Counter: Delete");
+  logStep(7, 7, "Counter: Delete");
 
   try {
     const { status, data } = await makeX402Request(
@@ -388,205 +371,33 @@ async function testCounterDelete(ctx: TestContext): Promise<boolean> {
 }
 
 // =============================================================================
-// SQL Tests
+// Exported Test Runner
 // =============================================================================
 
-async function testSqlSchemaInitial(ctx: TestContext): Promise<boolean> {
-  logStep(8, 12, "SQL: Get initial schema");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/sql/schema",
-      "GET",
-      ctx.x402Client
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { tables: Array<{ name: string; sql: string }> };
-    const hasCounters = result.tables.some((t) => t.name === "counters");
-    const hasUserData = result.tables.some((t) => t.name === "user_data");
-
-    if (!hasCounters || !hasUserData) {
-      logError(`Expected counters and user_data tables`);
-      return false;
-    }
-
-    logSuccess(`Schema has ${result.tables.length} tables (counters, user_data)`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
+export interface LifecycleTestResult {
+  passed: number;
+  total: number;
+  success: boolean;
 }
 
-async function testSqlCreateTable(ctx: TestContext): Promise<boolean> {
-  logStep(9, 12, "SQL: Create custom table");
+export async function runCounterLifecycle(verbose = false): Promise<LifecycleTestResult> {
+  const isVerbose = verbose || process.env.VERBOSE === "1";
 
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/sql/execute",
-      "POST",
-      ctx.x402Client,
-      {
-        query: `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_NAME} (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          score INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )`,
-      }
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { success: boolean; rowsAffected: number };
-    if (!result.success) {
-      logError(`Expected success=true`);
-      return false;
-    }
-
-    logSuccess(`Created table: ${TEST_TABLE_NAME}`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testSqlInsertData(ctx: TestContext): Promise<boolean> {
-  logStep(10, 12, "SQL: Insert data");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/sql/execute",
-      "POST",
-      ctx.x402Client,
-      {
-        query: `INSERT INTO ${TEST_TABLE_NAME} (name, score) VALUES (?, ?), (?, ?), (?, ?)`,
-        params: ["Alice", 100, "Bob", 85, "Charlie", 92],
-      }
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { success: boolean; rowsAffected: number };
-    // SQLite rowsWritten may count differently, just verify success and at least 3 rows
-    if (!result.success || result.rowsAffected < 3) {
-      logError(`Expected success with at least 3 rows, got ${result.rowsAffected}`);
-      return false;
-    }
-
-    logSuccess(`Inserted ${result.rowsAffected} rows (SQLite rowsWritten)`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testSqlQueryData(ctx: TestContext): Promise<boolean> {
-  logStep(11, 12, "SQL: Query data");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/sql/query",
-      "POST",
-      ctx.x402Client,
-      {
-        query: `SELECT name, score FROM ${TEST_TABLE_NAME} ORDER BY score DESC`,
-      }
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { rows: Array<{ name: string; score: number }>; rowCount: number; columns: string[] };
-    if (result.rowCount !== 3) {
-      logError(`Expected 3 rows, got ${result.rowCount}`);
-      return false;
-    }
-
-    // Check ordering (highest score first)
-    if (result.rows[0].name !== "Alice" || result.rows[0].score !== 100) {
-      logError(`Expected Alice with 100 first, got ${result.rows[0].name} with ${result.rows[0].score}`);
-      return false;
-    }
-
-    logSuccess(`Queried ${result.rowCount} rows: ${result.rows.map((r) => `${r.name}(${r.score})`).join(", ")}`);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testSqlSchemaFinal(ctx: TestContext): Promise<boolean> {
-  logStep(12, 12, "SQL: Verify custom table in schema");
-
-  try {
-    const { status, data } = await makeX402Request(
-      "/api/sql/schema",
-      "GET",
-      ctx.x402Client
-    );
-
-    if (status !== 200) {
-      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    const result = data as { tables: Array<{ name: string; sql: string }> };
-    const customTable = result.tables.find((t) => t.name === TEST_TABLE_NAME);
-
-    if (!customTable) {
-      logError(`Custom table ${TEST_TABLE_NAME} not found in schema`);
-      return false;
-    }
-
-    logSuccess(`Schema now has ${result.tables.length} tables (including ${TEST_TABLE_NAME})`);
-    log("Table SQL:", customTable.sql);
-    return true;
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-// =============================================================================
-// Main
-// =============================================================================
-
-async function main() {
-  console.clear();
-  console.log(`\n${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
-  console.log(`${COLORS.bright}  DURABLE OBJECTS LIFECYCLE TEST (Counter + SQL)${COLORS.reset}`);
-  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+  console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+  console.log(`${COLORS.bright}  COUNTER LIFECYCLE TEST${COLORS.reset}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
 
   if (!X402_CLIENT_PK) {
     console.error(`${COLORS.red}Error: Set X402_CLIENT_PK env var${COLORS.reset}`);
-    process.exit(1);
+    return { passed: 0, total: 7, success: false };
   }
 
   if (X402_NETWORK !== "mainnet" && X402_NETWORK !== "testnet") {
     console.error(`${COLORS.red}Error: Invalid X402_NETWORK${COLORS.reset}`);
-    process.exit(1);
+    return { passed: 0, total: 7, success: false };
   }
 
   const network: NetworkType = X402_NETWORK;
-
-  // Initialize wallet
   const { address, key } = await deriveChildAccount(network, X402_CLIENT_PK, 0);
 
   const x402Client = new X402PaymentClient({
@@ -594,13 +405,11 @@ async function main() {
     privateKey: key,
   });
 
-  console.log(`  Account:  ${address}`);
-  console.log(`  Network:  ${network}`);
-  console.log(`  Server:   ${X402_WORKER_URL}`);
-  console.log(`  Token:    ${TOKEN_TYPE}`);
-  console.log(`  Counter:  ${TEST_COUNTER_NAME}`);
-  console.log(`  Table:    ${TEST_TABLE_NAME}`);
-  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
+  console.log(`  Account: ${address}`);
+  console.log(`  Network: ${network}`);
+  console.log(`  Server:  ${X402_WORKER_URL}`);
+  console.log(`  Counter: ${TEST_COUNTER_NAME}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
 
   const ctx: TestContext = {
     x402Client,
@@ -608,65 +417,55 @@ async function main() {
     network,
   };
 
-  const results: Array<{ name: string; passed: boolean }> = [];
+  // Run initial test - if it fails, bail out (no state to test)
+  const totalTests = 7;
+  let passed = 0;
 
-  // Counter tests
-  results.push({ name: "Counter: Increment", passed: await testCounterIncrement(ctx) });
+  const incrementResult = await testCounterIncrement(ctx);
+  if (!incrementResult) {
+    console.log(`\n${COLORS.yellow}Bailing out: initial increment failed, skipping remaining tests${COLORS.reset}`);
+    console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+    console.log(`  0/${totalTests} tests passed (setup failed)`);
+    console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}\n`);
+    return { passed: 0, total: totalTests, success: false };
+  }
+  passed++;
   await sleep(300);
 
-  results.push({ name: "Counter: Get", passed: await testCounterGet(ctx) });
-  await sleep(300);
+  // Run remaining tests
+  const remainingTests = [
+    testCounterGet,
+    testCounterIncrementWithBounds,
+    testCounterDecrement,
+    testCounterReset,
+    testCounterList,
+    testCounterDelete,
+  ];
 
-  results.push({ name: "Counter: Increment with bounds", passed: await testCounterIncrementWithBounds(ctx) });
-  await sleep(300);
-
-  results.push({ name: "Counter: Decrement", passed: await testCounterDecrement(ctx) });
-  await sleep(300);
-
-  results.push({ name: "Counter: Reset", passed: await testCounterReset(ctx) });
-  await sleep(300);
-
-  results.push({ name: "Counter: List", passed: await testCounterList(ctx) });
-  await sleep(300);
-
-  results.push({ name: "Counter: Delete", passed: await testCounterDelete(ctx) });
-  await sleep(300);
-
-  // SQL tests
-  results.push({ name: "SQL: Schema (initial)", passed: await testSqlSchemaInitial(ctx) });
-  await sleep(300);
-
-  results.push({ name: "SQL: Create table", passed: await testSqlCreateTable(ctx) });
-  await sleep(300);
-
-  results.push({ name: "SQL: Insert data", passed: await testSqlInsertData(ctx) });
-  await sleep(300);
-
-  results.push({ name: "SQL: Query data", passed: await testSqlQueryData(ctx) });
-  await sleep(300);
-
-  results.push({ name: "SQL: Schema (final)", passed: await testSqlSchemaFinal(ctx) });
-
-  // Summary
-  console.log(`\n${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
-  console.log(`${COLORS.bright}  RESULTS${COLORS.reset}`);
-  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}`);
-
-  const passed = results.filter((r) => r.passed).length;
-  const total = results.length;
-
-  for (const r of results) {
-    const icon = r.passed ? `${COLORS.green}✓${COLORS.reset}` : `${COLORS.red}✗${COLORS.reset}`;
-    console.log(`  ${icon} ${r.name}`);
+  for (const test of remainingTests) {
+    if (await test(ctx)) {
+      passed++;
+    }
+    await sleep(300);
   }
 
-  console.log(`\n  ${passed}/${total} tests passed`);
-  console.log(`${COLORS.bright}${"═".repeat(70)}${COLORS.reset}\n`);
+  console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+  const pct = ((passed / totalTests) * 100).toFixed(1);
+  console.log(`  ${passed}/${totalTests} tests passed (${pct}%)`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}\n`);
 
-  process.exit(passed === total ? 0 : 1);
+  return { passed, total: totalTests, success: passed === totalTests };
 }
 
-main().catch((error) => {
-  console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
-  process.exit(1);
-});
+// =============================================================================
+// Main (when run directly)
+// =============================================================================
+
+if (import.meta.main) {
+  runCounterLifecycle()
+    .then((result) => process.exit(result.success ? 0 : 1))
+    .catch((error) => {
+      console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
+      process.exit(1);
+    });
+}

@@ -53,7 +53,13 @@ async function makeX402Request(
   return { status: retryRes.status, data };
 }
 
-export async function testKvStorageLifecycle(verbose = false) {
+export interface LifecycleTestResult {
+  passed: number;
+  total: number;
+  success: boolean;
+}
+
+export async function runKvLifecycle(verbose = false): Promise<LifecycleTestResult> {
   if (!X402_CLIENT_PK) {
     throw new Error("Set X402_CLIENT_PK env var with testnet private key mnemonic");
   }
@@ -91,7 +97,13 @@ export async function testKvStorageLifecycle(verbose = false) {
     successCount++;
   } else {
     logger.error(`Set failed: ${JSON.stringify(setResult.data)}`);
+    // Bail out early - no state to test if initial set fails
+    logger.info("Bailing out: initial set failed, skipping remaining tests");
+    logger.summary(0, totalTests);
+    return { passed: 0, total: totalTests, success: false };
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   // Test 2: Get the value back
   logger.info("2. Testing /api/kv/get...");
@@ -113,6 +125,8 @@ export async function testKvStorageLifecycle(verbose = false) {
   } else {
     logger.error(`Get failed: ${JSON.stringify(getResult.data)}`);
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   // Test 3: List keys
   logger.info("3. Testing /api/kv/list...");
@@ -136,6 +150,8 @@ export async function testKvStorageLifecycle(verbose = false) {
   } else {
     logger.error(`List failed: ${JSON.stringify(listResult.data)}`);
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   // Test 4: Set a public value and retrieve it
   logger.info("4. Testing public visibility...");
@@ -172,6 +188,8 @@ export async function testKvStorageLifecycle(verbose = false) {
     logger.error(`Public set failed: ${JSON.stringify(publicSetResult.data)}`);
   }
 
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   // Test 5: Delete the key
   logger.info("5. Testing /api/kv/delete...");
   const deleteResult = await makeX402Request(
@@ -205,16 +223,17 @@ export async function testKvStorageLifecycle(verbose = false) {
   }
 
   logger.summary(successCount, totalTests);
-  return { successCount, totalTests };
+  return { passed: successCount, total: totalTests, success: successCount === totalTests };
 }
+
+// Legacy export for backwards compatibility
+export const testKvStorageLifecycle = runKvLifecycle;
 
 // Run if executed directly
 if (import.meta.main) {
   const verbose = process.argv.includes("-v") || process.argv.includes("--verbose");
-  testKvStorageLifecycle(verbose)
-    .then(({ successCount, totalTests }) => {
-      process.exit(successCount === totalTests ? 0 : 1);
-    })
+  runKvLifecycle(verbose)
+    .then((result) => process.exit(result.success ? 0 : 1))
     .catch((err) => {
       console.error("Test failed:", err);
       process.exit(1);

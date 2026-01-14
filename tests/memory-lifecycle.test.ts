@@ -1,18 +1,18 @@
 /**
- * Links (URL Shortener) Lifecycle Tests
+ * Memory (Agent Memory) Lifecycle Tests
  *
- * Tests the full lifecycle of Links endpoints:
- *
- * 1. Create - create a short link
- * 2. List - list all links (should have 1)
- * 3. Expand - access the short link (free, records click)
- * 4. Stats - get click statistics
- * 5. Create with custom slug - test custom slug
- * 6. Delete - remove the link
- * 7. List - verify deletion
+ * Tests the full lifecycle of Memory endpoints:
+ * 1. Store - store a memory with embedding
+ * 2. Recall - retrieve by exact key
+ * 3. List - list all memories
+ * 4. Search - semantic search
+ * 5. Store another - add second memory
+ * 6. Search (verify both) - search should find both
+ * 7. Forget - delete first memory
+ * 8. List (verify deletion) - confirm memory is gone
  *
  * Usage:
- *   bun run tests/links-lifecycle.test.ts
+ *   bun run tests/memory-lifecycle.test.ts
  *
  * Environment:
  *   X402_CLIENT_PK  - Mnemonic for payments (required)
@@ -20,7 +20,7 @@
  *   VERBOSE=1       - Enable verbose logging
  */
 
-import type { TokenType } from "x402-stacks";
+import type { TokenType, NetworkType } from "x402-stacks";
 import { X402PaymentClient } from "x402-stacks";
 import { deriveChildAccount } from "../src/utils/wallet";
 import {
@@ -36,9 +36,8 @@ import {
 
 const VERBOSE = process.env.VERBOSE === "1";
 const TOKEN_TYPE: TokenType = "STX";
-
-// Test slugs - unique per run
-const TEST_SLUG_CUSTOM = `test-slug-${Date.now()}`;
+const TEST_MEMORY_KEY_1 = `test-memory-${Date.now()}-1`;
+const TEST_MEMORY_KEY_2 = `test-memory-${Date.now()}-2`;
 
 // =============================================================================
 // Test Helpers
@@ -95,7 +94,6 @@ async function makeX402Request(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // If not 402, return as-is
   if (initialRes.status !== 402) {
     let data: unknown;
     const text = await initialRes.text();
@@ -107,16 +105,13 @@ async function makeX402Request(
     return { status: initialRes.status, data, headers: initialRes.headers };
   }
 
-  // Get payment requirements
   const paymentText = await initialRes.text();
   const paymentReq: PaymentRequired = JSON.parse(paymentText);
   log(`Payment required: ${paymentReq.maxAmountRequired} ${paymentReq.tokenType}`);
 
-  // Sign payment
   const signResult = await x402Client.signPayment(paymentReq);
   log("Payment signed");
 
-  // Retry with payment
   const paidRes = await fetch(`${fullUrl}${tokenParam}`, {
     method,
     headers: {
@@ -137,33 +132,6 @@ async function makeX402Request(
   return { status: paidRes.status, data, headers: paidRes.headers };
 }
 
-// Free request (no payment needed - for expand endpoint)
-async function makeFreeRequest(
-  endpoint: string,
-  method: "GET" | "POST",
-  body?: unknown
-): Promise<{ status: number; data: unknown; headers: Headers }> {
-  const fullUrl = `${X402_WORKER_URL}${endpoint}`;
-
-  log(`Requesting ${method} ${endpoint} (free)...`);
-
-  const res = await fetch(fullUrl, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-    redirect: "manual", // Don't follow redirects automatically
-  });
-
-  let data: unknown;
-  const text = await res.text();
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
-  }
-  return { status: res.status, data, headers: res.headers };
-}
-
 // =============================================================================
 // Test Context
 // =============================================================================
@@ -172,22 +140,26 @@ interface TestContext {
   x402Client: X402PaymentClient;
   ownerAddress: string;
   network: "mainnet" | "testnet";
-  createdSlug: string; // Track the auto-generated slug
 }
 
 // =============================================================================
-// Link Tests
+// Memory Tests
 // =============================================================================
 
-async function testLinksCreate(ctx: TestContext): Promise<boolean> {
-  logStep(1, 7, "Links: Create");
+async function testMemoryStore(ctx: TestContext): Promise<boolean> {
+  logStep(1, 8, "Memory: Store (with embedding)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/create",
+      "/api/memory/store",
       "POST",
       ctx.x402Client,
-      { url: "https://example.com/test-page", title: "Test Link" }
+      {
+        key: TEST_MEMORY_KEY_1,
+        content: "The capital of France is Paris. It is known for the Eiffel Tower.",
+        metadata: { tags: ["geography", "europe"], type: "fact", importance: 8 },
+        generateEmbedding: true,
+      }
     );
 
     if (status !== 200) {
@@ -195,24 +167,17 @@ async function testLinksCreate(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; shortUrl: string; url: string; title: string };
-    if (!result.slug) {
-      logError(`No slug returned`);
+    const result = data as { key: string; stored: boolean; hasEmbedding: boolean };
+    if (!result.stored) {
+      logError(`Memory not stored`);
       return false;
     }
-    if (!result.shortUrl.includes(result.slug)) {
-      logError(`Short URL doesn't contain slug`);
-      return false;
-    }
-    if (result.url !== "https://example.com/test-page") {
-      logError(`URL mismatch: ${result.url}`);
+    if (!result.hasEmbedding) {
+      logError(`Embedding not generated`);
       return false;
     }
 
-    // Store the slug for later tests
-    ctx.createdSlug = result.slug;
-
-    logSuccess(`Created link: ${result.shortUrl} → ${result.url}`);
+    logSuccess(`Stored memory: ${result.key} (hasEmbedding: ${result.hasEmbedding})`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -220,14 +185,15 @@ async function testLinksCreate(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksList(ctx: TestContext): Promise<boolean> {
-  logStep(2, 7, "Links: List");
+async function testMemoryRecall(ctx: TestContext): Promise<boolean> {
+  logStep(2, 8, "Memory: Recall (by key)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/list",
-      "GET",
-      ctx.x402Client
+      "/api/memory/recall",
+      "POST",
+      ctx.x402Client,
+      { key: TEST_MEMORY_KEY_1 }
     );
 
     if (status !== 200) {
@@ -235,19 +201,85 @@ async function testLinksList(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { links: Array<{ slug: string; url: string; clicks: number }>; count: number };
+    const result = data as { key: string; content: string; metadata?: unknown; hasEmbedding: boolean };
+    if (result.key !== TEST_MEMORY_KEY_1) {
+      logError(`Key mismatch: ${result.key}`);
+      return false;
+    }
+    if (!result.content.includes("Paris")) {
+      logError(`Content mismatch: ${result.content}`);
+      return false;
+    }
+
+    logSuccess(`Recalled memory: ${result.key} - "${result.content.substring(0, 40)}..."`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testMemoryList(ctx: TestContext): Promise<boolean> {
+  logStep(3, 8, "Memory: List");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/memory/list",
+      "POST",
+      ctx.x402Client,
+      { limit: 10 }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { memories: Array<{ key: string }>; total: number; hasMore: boolean };
+    const ourMemory = result.memories.find((m) => m.key === TEST_MEMORY_KEY_1);
+
+    if (!ourMemory) {
+      logError(`Our memory not found in list of ${result.total}`);
+      return false;
+    }
+
+    logSuccess(`Listed ${result.total} memories, found ours`);
+    return true;
+  } catch (error) {
+    logError(`Exception: ${error}`);
+    return false;
+  }
+}
+
+async function testMemorySearch(ctx: TestContext): Promise<boolean> {
+  logStep(4, 8, "Memory: Search (semantic)");
+
+  try {
+    const { status, data } = await makeX402Request(
+      "/api/memory/search",
+      "POST",
+      ctx.x402Client,
+      { query: "What is the capital city of France?", limit: 5 }
+    );
+
+    if (status !== 200) {
+      logError(`Expected 200, got ${status}: ${JSON.stringify(data)}`);
+      return false;
+    }
+
+    const result = data as { query: string; results: Array<{ key: string; content: string; score?: number }>; count: number };
     if (result.count < 1) {
-      logError(`Expected at least 1 link, got ${result.count}`);
+      logError(`No search results`);
       return false;
     }
 
-    const createdLink = result.links.find(l => l.slug === ctx.createdSlug);
-    if (!createdLink) {
-      logError(`Created link not found in list`);
+    const topResult = result.results[0];
+    if (!topResult.content.includes("Paris")) {
+      logError(`Top result doesn't mention Paris: ${topResult.content}`);
       return false;
     }
 
-    logSuccess(`Listed ${result.count} links (found our test link: ${ctx.createdSlug})`);
+    logSuccess(`Search found ${result.count} result(s), top: "${topResult.content.substring(0, 40)}..."`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -255,52 +287,20 @@ async function testLinksList(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksExpand(ctx: TestContext): Promise<boolean> {
-  logStep(3, 7, "Links: Expand (free, records click)");
-
-  try {
-    // Expand is free - no payment required
-    const { status, data, headers } = await makeFreeRequest(
-      `/api/links/expand/${ctx.createdSlug}`,
-      "GET"
-    );
-
-    // Should get a redirect (302) or JSON with url
-    if (status === 302) {
-      const location = headers.get("Location");
-      if (!location || !location.includes("example.com")) {
-        logError(`Expected redirect to example.com, got: ${location}`);
-        return false;
-      }
-      logSuccess(`Got redirect to: ${location}`);
-      return true;
-    } else if (status === 200) {
-      const result = data as { url: string; slug: string };
-      if (!result.url.includes("example.com")) {
-        logError(`Expected URL with example.com, got: ${result.url}`);
-        return false;
-      }
-      logSuccess(`Expanded: ${ctx.createdSlug} → ${result.url}`);
-      return true;
-    } else {
-      logError(`Expected 200 or 302, got ${status}: ${JSON.stringify(data)}`);
-      return false;
-    }
-  } catch (error) {
-    logError(`Exception: ${error}`);
-    return false;
-  }
-}
-
-async function testLinksStats(ctx: TestContext): Promise<boolean> {
-  logStep(4, 7, "Links: Stats");
+async function testMemoryStoreSecond(ctx: TestContext): Promise<boolean> {
+  logStep(5, 8, "Memory: Store (second memory)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/stats",
+      "/api/memory/store",
       "POST",
       ctx.x402Client,
-      { slug: ctx.createdSlug }
+      {
+        key: TEST_MEMORY_KEY_2,
+        content: "Berlin is the capital of Germany. It has a rich history and the Brandenburg Gate.",
+        metadata: { tags: ["geography", "europe"], type: "fact", importance: 7 },
+        generateEmbedding: true,
+      }
     );
 
     if (status !== 200) {
@@ -308,17 +308,8 @@ async function testLinksStats(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; clicks: number; url: string; createdAt: string };
-    if (result.slug !== ctx.createdSlug) {
-      logError(`Slug mismatch: ${result.slug}`);
-      return false;
-    }
-    if (result.clicks < 1) {
-      logError(`Expected at least 1 click, got ${result.clicks}`);
-      return false;
-    }
-
-    logSuccess(`Stats for ${result.slug}: ${result.clicks} clicks`);
+    const result = data as { key: string; stored: boolean };
+    logSuccess(`Stored second memory: ${result.key}`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -326,15 +317,15 @@ async function testLinksStats(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksCreateCustomSlug(ctx: TestContext): Promise<boolean> {
-  logStep(5, 7, "Links: Create with custom slug");
+async function testMemorySearchBoth(ctx: TestContext): Promise<boolean> {
+  logStep(6, 8, "Memory: Search (verify both)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/create",
+      "/api/memory/search",
       "POST",
       ctx.x402Client,
-      { url: "https://github.com/stx402", slug: TEST_SLUG_CUSTOM, title: "Custom Slug Test" }
+      { query: "European capital cities", limit: 10 }
     );
 
     if (status !== 200) {
@@ -342,13 +333,18 @@ async function testLinksCreateCustomSlug(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { slug: string; shortUrl: string; url: string };
-    if (result.slug !== TEST_SLUG_CUSTOM) {
-      logError(`Custom slug not used: ${result.slug}`);
+    const result = data as { results: Array<{ key: string; content: string }>; count: number };
+
+    // Check if both memories are found
+    const hasParis = result.results.some((r) => r.content.includes("Paris"));
+    const hasBerlin = result.results.some((r) => r.content.includes("Berlin"));
+
+    if (!hasParis || !hasBerlin) {
+      logError(`Search should find both Paris and Berlin memories`);
       return false;
     }
 
-    logSuccess(`Created with custom slug: ${result.slug} → ${result.url}`);
+    logSuccess(`Search found both memories (${result.count} total results)`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -356,36 +352,37 @@ async function testLinksCreateCustomSlug(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksDelete(ctx: TestContext): Promise<boolean> {
-  logStep(6, 7, "Links: Delete");
+async function testMemoryForget(ctx: TestContext): Promise<boolean> {
+  logStep(7, 8, "Memory: Forget (delete both)");
 
   try {
-    // Delete both links we created
+    // Delete first memory
     const { status: status1, data: data1 } = await makeX402Request(
-      "/api/links/delete",
+      "/api/memory/forget",
       "POST",
       ctx.x402Client,
-      { slug: ctx.createdSlug }
+      { key: TEST_MEMORY_KEY_1 }
     );
 
     if (status1 !== 200) {
-      logError(`Expected 200 for first delete, got ${status1}: ${JSON.stringify(data1)}`);
+      logError(`Expected 200 for first forget, got ${status1}: ${JSON.stringify(data1)}`);
       return false;
     }
 
+    // Delete second memory
     const { status: status2, data: data2 } = await makeX402Request(
-      "/api/links/delete",
+      "/api/memory/forget",
       "POST",
       ctx.x402Client,
-      { slug: TEST_SLUG_CUSTOM }
+      { key: TEST_MEMORY_KEY_2 }
     );
 
     if (status2 !== 200) {
-      logError(`Expected 200 for second delete, got ${status2}: ${JSON.stringify(data2)}`);
+      logError(`Expected 200 for second forget, got ${status2}: ${JSON.stringify(data2)}`);
       return false;
     }
 
-    logSuccess(`Deleted both test links: ${ctx.createdSlug}, ${TEST_SLUG_CUSTOM}`);
+    logSuccess(`Forgot both memories: ${TEST_MEMORY_KEY_1}, ${TEST_MEMORY_KEY_2}`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -393,14 +390,15 @@ async function testLinksDelete(ctx: TestContext): Promise<boolean> {
   }
 }
 
-async function testLinksListAfterDelete(ctx: TestContext): Promise<boolean> {
-  logStep(7, 7, "Links: List (verify deletion)");
+async function testMemoryListAfterForget(ctx: TestContext): Promise<boolean> {
+  logStep(8, 8, "Memory: List (verify deletion)");
 
   try {
     const { status, data } = await makeX402Request(
-      "/api/links/list",
-      "GET",
-      ctx.x402Client
+      "/api/memory/list",
+      "POST",
+      ctx.x402Client,
+      { limit: 100 }
     );
 
     if (status !== 200) {
@@ -408,18 +406,18 @@ async function testLinksListAfterDelete(ctx: TestContext): Promise<boolean> {
       return false;
     }
 
-    const result = data as { links: Array<{ slug: string }>; count: number };
+    const result = data as { memories: Array<{ key: string }>; total: number };
 
-    // Check that our test links are gone
-    const foundFirst = result.links.find(l => l.slug === ctx.createdSlug);
-    const foundSecond = result.links.find(l => l.slug === TEST_SLUG_CUSTOM);
+    // Check that our test memories are gone
+    const foundFirst = result.memories.find((m) => m.key === TEST_MEMORY_KEY_1);
+    const foundSecond = result.memories.find((m) => m.key === TEST_MEMORY_KEY_2);
 
     if (foundFirst || foundSecond) {
-      logError(`Deleted links still present in list`);
+      logError(`Deleted memories still present in list`);
       return false;
     }
 
-    logSuccess(`Verified deletion: test links no longer in list (${result.count} remaining)`);
+    logSuccess(`Verified deletion: test memories no longer in list (${result.total} remaining)`);
     return true;
   } catch (error) {
     logError(`Exception: ${error}`);
@@ -437,48 +435,51 @@ export interface LifecycleTestResult {
   success: boolean;
 }
 
-export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestResult> {
-  console.log(`${COLORS.bright}╔════════════════════════════════════════╗${COLORS.reset}`);
-  console.log(`${COLORS.bright}║     Links Lifecycle Tests              ║${COLORS.reset}`);
-  console.log(`${COLORS.bright}╚════════════════════════════════════════╝${COLORS.reset}`);
-  console.log(`\n${COLORS.gray}Server: ${X402_WORKER_URL}${COLORS.reset}`);
-  console.log(`${COLORS.gray}Network: ${X402_NETWORK}${COLORS.reset}`);
-  console.log(`${COLORS.gray}Token: ${TOKEN_TYPE}${COLORS.reset}`);
+export async function runMemoryLifecycle(verbose = false): Promise<LifecycleTestResult> {
+  const isVerbose = verbose || process.env.VERBOSE === "1";
 
-  // Initialize X402 client
+  console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+  console.log(`${COLORS.bright}  MEMORY (AGENT MEMORY) LIFECYCLE TEST${COLORS.reset}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
+
   if (!X402_CLIENT_PK) {
-    console.error(`${COLORS.red}Error: X402_CLIENT_PK environment variable is required${COLORS.reset}`);
-    process.exit(1);
+    console.error(`${COLORS.red}Error: Set X402_CLIENT_PK env var${COLORS.reset}`);
+    return { passed: 0, total: 8, success: false };
   }
 
   if (X402_NETWORK !== "mainnet" && X402_NETWORK !== "testnet") {
     console.error(`${COLORS.red}Error: Invalid X402_NETWORK${COLORS.reset}`);
-    process.exit(1);
+    return { passed: 0, total: 8, success: false };
   }
 
-  const { address, key } = await deriveChildAccount(X402_NETWORK, X402_CLIENT_PK, 0);
+  const network: NetworkType = X402_NETWORK;
+  const { address, key } = await deriveChildAccount(network, X402_CLIENT_PK, 0);
 
   const x402Client = new X402PaymentClient({
-    network: X402_NETWORK,
+    network,
     privateKey: key,
   });
 
-  console.log(`${COLORS.gray}Client: ${address}${COLORS.reset}`);
+  console.log(`  Account:  ${address}`);
+  console.log(`  Network:  ${network}`);
+  console.log(`  Server:   ${X402_WORKER_URL}`);
+  console.log(`  Memory 1: ${TEST_MEMORY_KEY_1}`);
+  console.log(`  Memory 2: ${TEST_MEMORY_KEY_2}`);
+  console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
 
   const ctx: TestContext = {
     x402Client,
     ownerAddress: address,
-    network: X402_NETWORK,
-    createdSlug: "",
+    network,
   };
 
   // Run initial test - if it fails, bail out (no state to test)
-  const totalTests = 7;
+  const totalTests = 8;
   let passed = 0;
 
-  const createResult = await testLinksCreate(ctx);
-  if (!createResult) {
-    console.log(`\n${COLORS.yellow}Bailing out: initial create failed, skipping remaining tests${COLORS.reset}`);
+  const storeResult = await testMemoryStore(ctx);
+  if (!storeResult) {
+    console.log(`\n${COLORS.yellow}Bailing out: initial store failed, skipping remaining tests${COLORS.reset}`);
     console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
     console.log(`  0/${totalTests} tests passed (setup failed)`);
     console.log(`${COLORS.bright}${"═".repeat(50)}${COLORS.reset}\n`);
@@ -489,12 +490,13 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
 
   // Run remaining tests
   const remainingTests = [
-    testLinksList,
-    testLinksExpand,
-    testLinksStats,
-    testLinksCreateCustomSlug,
-    testLinksDelete,
-    testLinksListAfterDelete,
+    testMemoryRecall,
+    testMemoryList,
+    testMemorySearch,
+    testMemoryStoreSecond,
+    testMemorySearchBoth,
+    testMemoryForget,
+    testMemoryListAfterForget,
   ];
 
   for (const test of remainingTests) {
@@ -504,7 +506,6 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
     await sleep(300);
   }
 
-  // Summary
   console.log(`\n${COLORS.bright}${"═".repeat(50)}${COLORS.reset}`);
   const pct = ((passed / totalTests) * 100).toFixed(1);
   console.log(`  ${passed}/${totalTests} tests passed (${pct}%)`);
@@ -518,7 +519,7 @@ export async function runLinksLifecycle(verbose = false): Promise<LifecycleTestR
 // =============================================================================
 
 if (import.meta.main) {
-  runLinksLifecycle()
+  runMemoryLifecycle()
     .then((result) => process.exit(result.success ? 0 : 1))
     .catch((error) => {
       console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);

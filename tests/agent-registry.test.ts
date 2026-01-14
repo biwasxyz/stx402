@@ -59,7 +59,13 @@ async function makeX402Request(
   return { status: retryRes.status, data };
 }
 
-export async function testAgentRegistryEndpoints(verbose = false) {
+export interface LifecycleTestResult {
+  passed: number;
+  total: number;
+  success: boolean;
+}
+
+export async function runAgentLifecycle(verbose = false): Promise<LifecycleTestResult> {
   if (!X402_CLIENT_PK) {
     throw new Error("Set X402_CLIENT_PK env var with testnet private key mnemonic");
   }
@@ -93,6 +99,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
     logger.error(`Registry info error: ${err}`);
   }
 
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   // Test 2: Agent info for agent ID 0 (first registered agent)
   logger.info("2. Testing /api/agent/info...");
   const infoResult = await makeX402Request(
@@ -113,6 +121,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
   } else {
     logger.error(`Agent info failed: ${JSON.stringify(infoResult.data)}`);
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   // Test 3: Agent owner lookup
   logger.info("3. Testing /api/agent/owner...");
@@ -135,6 +145,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
     logger.error(`Owner lookup failed: ${JSON.stringify(ownerResult.data)}`);
   }
 
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   // Test 4: Agent version
   logger.info("4. Testing /api/agent/version...");
   const versionResult = await makeX402Request(
@@ -152,6 +164,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
   } else {
     logger.error(`Version lookup failed: ${JSON.stringify(versionResult.data)}`);
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   // Test 5: Reputation summary for agent 0
   logger.info("5. Testing /api/agent/reputation/summary...");
@@ -174,6 +188,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
     logger.error(`Reputation summary failed: ${JSON.stringify(repSummaryResult.data)}`);
   }
 
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   // Test 6: Reputation clients for agent 0
   logger.info("6. Testing /api/agent/reputation/clients...");
   const repClientsResult = await makeX402Request(
@@ -194,6 +210,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
   } else {
     logger.error(`Reputation clients failed: ${JSON.stringify(repClientsResult.data)}`);
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   // Test 7: Validation summary for agent 0
   logger.info("7. Testing /api/agent/validation/summary...");
@@ -216,6 +234,8 @@ export async function testAgentRegistryEndpoints(verbose = false) {
     logger.error(`Validation summary failed: ${JSON.stringify(valSummaryResult.data)}`);
   }
 
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   // Test 8: Agent lookup by owner
   logger.info("8. Testing /api/agent/lookup...");
   const testDeployer = "ST3YT0XW92E6T2FE59B2G5N2WNNFSBZ6MZKQS5D18";
@@ -236,16 +256,17 @@ export async function testAgentRegistryEndpoints(verbose = false) {
   }
 
   logger.summary(successCount, totalTests);
-  return { successCount, totalTests };
+  return { passed: successCount, total: totalTests, success: successCount === totalTests };
 }
+
+// Legacy export for backwards compatibility
+export const testAgentRegistryEndpoints = runAgentLifecycle;
 
 // Run if executed directly
 if (import.meta.main) {
   const verbose = process.argv.includes("-v") || process.argv.includes("--verbose");
-  testAgentRegistryEndpoints(verbose)
-    .then(({ successCount, totalTests }) => {
-      process.exit(successCount === totalTests ? 0 : 1);
-    })
+  runAgentLifecycle(verbose)
+    .then((result) => process.exit(result.success ? 0 : 1))
     .catch((err) => {
       console.error("Test failed:", err);
       process.exit(1);

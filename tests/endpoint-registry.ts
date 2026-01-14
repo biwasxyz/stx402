@@ -971,6 +971,32 @@ const agentEndpoints: TestConfig[] = [
 // EXPORT COMBINED REGISTRY
 // =============================================================================
 
+// Stateless endpoints - can be tested individually without state management
+export const STATELESS_ENDPOINTS: TestConfig[] = [
+  ...stacksEndpoints,
+  ...aiEndpoints,
+  ...hashEndpoints,
+  ...dataEndpoints,
+  ...utilEndpoints,
+  ...agentEndpoints,
+];
+
+// Stateful categories - should use lifecycle tests for full CRUD
+export const STATEFUL_CATEGORIES = [
+  "registry",
+  "kv",
+  "paste",
+  "counter",
+  "sql",
+  "links",
+  "sync",
+  "queue",
+  "memory",
+] as const;
+
+export type StatefulCategory = typeof STATEFUL_CATEGORIES[number];
+
+// Full registry for reference (includes all endpoints)
 export const ENDPOINT_REGISTRY: TestConfig[] = [
   ...stacksEndpoints,
   ...aiEndpoints,
@@ -1008,9 +1034,15 @@ export const ENDPOINT_CATEGORIES: Record<string, TestConfig[]> = {
   agent: agentEndpoints,
 };
 
+// Check if a category is stateful
+export function isStatefulCategory(category: string): category is StatefulCategory {
+  return STATEFUL_CATEGORIES.includes(category as StatefulCategory);
+}
+
 // Export counts for verification
 export const ENDPOINT_COUNTS = {
   total: ENDPOINT_REGISTRY.length, // ~90 tests
+  stateless: STATELESS_ENDPOINTS.length, // stateless only
   stacks: stacksEndpoints.length,  // 7
   ai: aiEndpoints.length,          // 13
   hash: hashEndpoints.length,      // 6
