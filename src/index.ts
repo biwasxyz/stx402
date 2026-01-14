@@ -132,8 +132,11 @@ For general utilities, storage, and inference: https://x402.aibtc.com
       `.trim(),
     },
     tags: [
+      { name: "Health", description: "Service health checks" },
+      { name: "System", description: "System pages and documentation" },
       { name: "Info", description: "Service information and documentation" },
       { name: "Registry", description: "X402 endpoint directory" },
+      { name: "Registry Admin", description: "Admin operations for registry verification" },
       { name: "Links", description: "URL shortener with analytics" },
       { name: "Agent Registry", description: "ERC-8004 agent identity, reputation, and validation on Stacks" },
     ],

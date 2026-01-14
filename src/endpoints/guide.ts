@@ -40,8 +40,8 @@ const categories: Category[] = [
     name: "Registry",
     color: "#f59e0b",
     icon: "&#128218;",
-    description: "X402 endpoint discovery and registration - the core directory",
-    useFor: "Registering your X402 endpoints, probing payment requirements, listing available endpoints, managing ownership, transferring endpoints",
+    description: "X402 endpoint discovery and registration - make your API discoverable by developers and AI agents across the ecosystem",
+    useFor: "Registering your X402 endpoints to join the directory, probing payment requirements, listing available endpoints, managing ownership, transferring endpoints",
     examples: [
       { path: "/registry/list", name: "list (free)" },
       { path: "/registry/register", name: "register" },
@@ -309,6 +309,10 @@ function generateGuideHTML(): string {
         Discover and register X402 endpoints, and interact with ERC-8004 agent registries on Stacks.
         All endpoints return JSON and accept <strong>STX</strong>, <strong>sBTC</strong>, or <strong>USDCx</strong> for payment.
       </p>
+      <p style="margin-top: 12px; color: #71717a;">
+        <strong style="color: #f59e0b;">Why register?</strong> Registered endpoints are discoverable by developers and AI agents building on X402.
+        Get your API in front of the ecosystem, enable automated discovery, and join a growing network of monetized services.
+      </p>
     </div>
 
     <div class="intro" style="border-color: #f59e0b;">
@@ -342,7 +346,7 @@ function generateGuideHTML(): string {
             <strong>Use for:</strong> ${c.useFor}
           </div>
           <div class="examples">
-            ${c.examples.map(e => `<a href="/#/operations/${e.name}" class="example">${e.name}</a>`).join("")}
+            ${c.examples.map(e => `<span class="example">${e.path}</span>`).join("")}
           </div>
           <div class="tier-info">
             <span class="tier-badge" style="background: ${c.color}22; color: ${c.color}; border: 1px solid ${c.color}44;">${c.tier}</span>

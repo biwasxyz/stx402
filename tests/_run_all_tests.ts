@@ -47,14 +47,7 @@ import {
 
 // Import lifecycle test runners
 import { runRegistryLifecycle } from "./registry-lifecycle.test";
-import { runKvLifecycle } from "./kv-storage.test";
-import { runPasteLifecycle } from "./paste-lifecycle.test";
-import { runCounterLifecycle } from "./counter-lifecycle.test";
-import { runSqlLifecycle } from "./sql-lifecycle.test";
 import { runLinksLifecycle } from "./links-lifecycle.test";
-import { runSyncLifecycle } from "./sync-lifecycle.test";
-import { runQueueLifecycle } from "./queue-lifecycle.test";
-import { runMemoryLifecycle } from "./memory-lifecycle.test";
 import { runAgentLifecycle } from "./agent-registry.test";
 
 // =============================================================================
@@ -63,14 +56,7 @@ import { runAgentLifecycle } from "./agent-registry.test";
 
 const LIFECYCLE_RUNNERS: Record<string, (verbose?: boolean) => Promise<{ passed: number; total: number; success: boolean }>> = {
   registry: runRegistryLifecycle,
-  kv: runKvLifecycle,
-  paste: runPasteLifecycle,
-  counter: runCounterLifecycle,
-  sql: runSqlLifecycle,
   links: runLinksLifecycle,
-  sync: runSyncLifecycle,
-  queue: runQueueLifecycle,
-  memory: runMemoryLifecycle,
   agent: runAgentLifecycle,
 };
 
