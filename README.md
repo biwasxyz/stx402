@@ -1,38 +1,43 @@
-# STX402 Directory
+# stx402
 
-The meta layer for the X402 ecosystem - endpoint discovery and ERC-8004 agent identity on Stacks.
+![Status](https://img.shields.io/badge/Status-Active-brightgreen) ![Public](https://img.shields.io/badge/Public-blue) ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![Stacks](https://img.shields.io/badge/Stacks-5546FF?logo=stacks&logoColor=white)
 
-**[API Docs](https://stx402.com/docs)** · **[Guide](https://stx402.com/guide)** · **[Toolbox](https://stx402.com/toolbox)** · **[Dashboard](https://stx402.com/dashboard)**
+> **Note:** This is a fork. See the original repository for upstream changes.
 
-## What is STX402?
+## Tech Stack
 
-- **Registry**: Discover and register X402-compatible endpoints
-- **Agent**: ERC-8004 agent identity, reputation, and validation
-- **Links**: URL shortener with click tracking
+- Node.js
+- TypeScript
+- Stacks
 
-For general utilities, storage, and inference: [x402.aibtc.com](https://x402.aibtc.com)
+## Project Structure
 
-## Development
+```
+CLAUDE.md
+README.md
+docs/
+package-lock.json
+package.json
+patches/
+scripts/
+src/
+tests/
+tsconfig.json
+worker-configuration.d.ts
+wrangler.jsonc
+```
+
+## Getting Started
 
 ```bash
+git clone https://github.com/biwasxyz/stx402.git
+cd stx402
 npm install
-npm run dev          # Local dev server
-npm run deploy       # Deploy to Cloudflare Workers
-npm run cf-typegen   # Regenerate types from wrangler bindings
+npm run dev
 ```
 
-## Tests
+## Timeline
 
-E2E tests require testnet mnemonic for X402 payment signing:
-
-```bash
-cp .env.example .env
-# Edit .env: X402_CLIENT_PK="your testnet mnemonic"
-
-npm run dev                              # Terminal 1
-bun run tests/_run_all_tests.ts          # Terminal 2
-```
-
-## License
-
-MIT
+- **Created:** 2026-01-03
+- **Last Updated:** 2026-01-16
+- **Status:** Active
